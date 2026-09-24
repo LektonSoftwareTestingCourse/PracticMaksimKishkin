@@ -67,8 +67,12 @@
 
 ## 3. Попарное тестирование
 
+Для ядра построены две независимые модели PICT — по одной на каждый сервис.
+
+### 3.1. Authorization
+
 - **Файл модели:** `docs/practice-2/pict/model.txt` (7 параметров, 2 ограничения).
-- **Сгенерированный набор:** `docs/practice-2/pict/cases.txt`
+- **Сгенерированный набор:** `docs/practice-2/pict/cases.txt` (25 строк).
 
 | Параметр          | Значения                                 |
 | ----------------- | ---------------------------------------- |
@@ -90,35 +94,72 @@ IF [expiry] = "expired" THEN [amount_vs_balance] = "below";
 
 **Обоснование ограничений:**
 
-- **Ограничение 1** (не-ACTIVE статус → все суммы below). При статусе INACTIVE/BLOCKED/EXPIRED алгоритм авторизации выходит на шаге 2 (проверка статуса) и не доходит до проверки лимитов и баланса. Проверять для таких карт отношения суммы к лимитам бессмысленно — транзакция отклоняется раньше. Ограничение исключает недостижимые сочетания и не тратит строки набора.
-- **Ограничение 2** (expiry=expired → balance below). При истёкшем сроке алгоритм выходит на шаге 3 (проверка срока) и не доходит до проверки баланса. Сочетание «истёкший срок + превышение баланса» недостижимо.
+- **Ограничение 1** (не-ACTIVE статус → все суммы below). При статусе, отличном от ACTIVE, транзакция отклоняется по причине статуса карты; проверка лимитов и баланса на результат не влияет. Сочетания с превышением лимитов для таких карт недостижимы как значимые. Ограничение исключает недостижимые сочетания и не тратит строки набора.
+- **Ограничение 2** (expiry=expired → balance below). При истёкшем сроке транзакция отклоняется по сроку действия до проверки баланса. Сочетание «истёкший срок + превышение баланса» недостижимо.
 
-Каждая строка набора проецируется в отдельный тест-кейс (см. 4.1).
+### 3.2. Card-Management
+
+- **Файл модели:** `docs/practice-2/pict/model-card-management.txt` (6 параметров, 6 ограничений).
+- **Сгенерированный набор:** `docs/practice-2/pict/cases-card-management.txt` (26 строк).
+
+| Параметр          | Значения                                        |
+| ----------------- | ----------------------------------------------- |
+| operation         | create, read, update, delete, reserve, generate |
+| pan_validity      | valid, invalid_luhn, wrong_length               |
+| bin               | known, unknown                                  |
+| expiry_format     | mmyy, iso, empty                                |
+| status            | ACTIVE, INACTIVE, BLOCKED, DELETED              |
+| amount_vs_balance | below, equal, above                             |
+
+**Ограничения:**
+
+```pict
+IF [operation] = "create" THEN [pan_validity] = "valid" AND [amount_vs_balance] = "below";
+IF [operation] = "generate" THEN [pan_validity] = "valid" AND [amount_vs_balance] = "below";
+IF [operation] = "read" THEN [amount_vs_balance] = "below";
+IF [operation] = "delete" THEN [amount_vs_balance] = "below";
+IF [operation] = "reserve" THEN [pan_validity] = "valid" AND [bin] = "known" AND [expiry_format] = "mmyy";
+IF [status] = "DELETED" THEN [operation] <> "reserve";
+```
+
+**Обоснование ограничений:**
+
+- **Ограничения 1–2** (create/generate → PAN валиден, баланс не проверяется). При создании и генерации PAN формируется сервисом по алгоритму Луна, поэтому невалидный PAN в этих операциях недостижим. Баланс при создании задаётся, а не сравнивается с суммой.
+- **Ограничения 3–4** (read/delete → баланс не проверяется). Чтение и удаление не оперируют суммой транзакции.
+- **Ограничение 5** (reserve → PAN валиден, BIN известен, формат MMYY). Резервирование вызывается Authorization по уже существующей карте, поэтому PAN заведомо валиден, BIN известен, а срок хранится в формате MMYY.
+- **Ограничение 6** (DELETED → не reserve). Удалённая карта не участвует в транзакциях (ТЗ 05, п. 2).
+
+### 3.3. Обоснование 2-wise покрытия
+
+Полный перебор модели Authorization — 4 × 3 × 3 × 3 × 3 × 3 × 4 = 3888 комбинаций, модели Card-Management — 6 × 3 × 2 × 3 × 4 × 3 = 1296 комбинаций. Попарное покрытие (2-wise) сокращает оба набора до 25 и 26 строк соответственно. Основание — эмпирическое наблюдение: большинство дефектов вызывается взаимодействием не более двух факторов. Критичные сочетания трёх и более параметров, известные команде, добавляются в набор вручную (см. примечание к 4.1).
+
+Каждая строка каждого набора проецируется в отдельный тест-кейс (см. 4.1 и 4.2).
 
 ## 4. Тест-кейсы
 
-| ID        | Источник         |    Вид     | Требование          | Предусловие                                   | Шаги                                                                              | Ожидаемый результат                                                                           |
-| :-------- | :--------------- | :--------: | :------------------ | :-------------------------------------------- | :-------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
-| **TC-01** | КЭ: status       | Позитивный | ТЗ 04, п. 2         | Карта ACTIVE, срок валиден, баланс 20000      | POST `/api/internal/authorize`, amount=1000                                       | HTTP 200: APPROVED, `responseCode="00"`, сгенерирован уникальный RRN (12 цифр) и authCode     |
-| **TC-02** | КЭ: status       | Негативный | ТЗ 04, п. 2         | Карта INACTIVE                                | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, причина `CARD_INACTIVE`                                                   |
-| **TC-03** | КЭ: status       | Негативный | ТЗ 04, п. 2         | Карта BLOCKED                                 | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, причина `CARD_BLOCKED`                                                    |
-| **TC-04** | КЭ: status       | Негативный | ТЗ 04, п. 2         | Карта EXPIRED                                 | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`                               |
-| **TC-05** | BV-04            | Негативный | ТЗ 04, п. 2 (шаг 3) | Карта ACTIVE, expiryDate=0826 (прошлый месяц) | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`                               |
-| **TC-06** | BV-01            | Позитивный | ТЗ 04, п. 4         | Карта ACTIVE, остаток суточного лимита 8000   | POST `/api/internal/authorize`, amount=8000                                       | HTTP 200: APPROVED, `responseCode="00"`, суточный лимит исчерпан полностью                    |
-| **TC-07** | BV-01            | Негативный | ТЗ 04, п. 4         | Карта ACTIVE, остаток суточного лимита 8000   | POST `/api/internal/authorize`, amount=8001                                       | HTTP 400: DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT`                       |
-| **TC-08** | BV-02            | Негативный | ТЗ 04, п. 4         | Карта ACTIVE, остаток месячного лимита 25000  | POST `/api/internal/authorize`, amount=25001                                      | HTTP 400: DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT`                       |
-| **TC-09** | BV-03            | Негативный | ТЗ 04, п. 2 (шаг 6) | Карта ACTIVE, баланс = 20000                  | POST `/api/internal/authorize`, amount=20001                                      | HTTP 422: DECLINED, `responseCode="51"`, причина `INSUFFICIENT_FUNDS`                         |
-| **TC-10** | КЭ: CMS          | Негативный | ТЗ 04, п. 5         | CMS остановлен / имитация таймаута            | POST `/api/internal/authorize`, amount=1000                                       | HTTP 503: DECLINED, `responseCode="05"`, причина `SERVICE_UNAVAILABLE`                        |
-| **TC-11** | КЭ: CMS create   | Позитивный | ТЗ 05, п. 2         | База данных CMS доступна                      | POST `/api/cards` с валидными параметрами BIN 400000                              | HTTP 201 Created: сгенерирован 16-значный PAN с корректным Луном, срок +3 года, статус ACTIVE |
-| **TC-12** | КЭ: CMS read     | Негативный | ТЗ 05, п. 2         | База данных CMS доступна                      | GET `/api/cards/4000001234567890` (16 цифр, валиден по формату, отсутствует в БД) | HTTP 404 Not Found                                                                            |
-| **TC-13** | КЭ: CMS update   | Позитивный | ТЗ 05, п. 2         | Карта ACTIVE создана                          | PATCH `/api/cards/{pan}` с новым `availableBalance`                               | HTTP 200 OK: поле обновлено, остальные не изменены                                            |
-| **TC-14** | КЭ: CMS delete   | Позитивный | ТЗ 05, п. 2         | Карта ACTIVE создана                          | DELETE `/api/cards/{pan}`                                                         | HTTP 204 No Content: статус карты = DELETED, карта не возвращается в GET                      |
-| **TC-15** | КЭ: CMS bin      | Негативный | ТЗ 05, п. 2         | База данных CMS доступна                      | POST `/api/cards` с `bin=999999` (нет в таблице BIN)                              | HTTP 400 Bad Request: ошибка валидации BIN                                                    |
-| **TC-16** | КЭ: CMS generate | Позитивный | ТЗ 05, п. 3         | База данных CMS доступна                      | POST `/api/cards/generate`, body: `{count: 100, bins: ["400000"]}`                | HTTP 201 Created: 100 карт, распределение статусов ≈ 95/3/2                                   |
-| **TC-17** | КЭ: Reserve      | Позитивный | ТЗ 05, п. 5         | Карта существует, баланс 20000                | POST `/api/cards/{pan}/reserve`, body: `{amount: 1000, rrn: "123456789012"}`      | HTTP 200 OK: доступный баланс уменьшен до 19000                                               |
-| **TC-18** | BV-08            | Негативный | ТЗ 05, п. 5         | Карта существует, баланс 20000                | POST `/api/cards/{pan}/reserve`, body: `{amount: 20001, rrn: "123456789013"}`     | HTTP 402 Payment Required: `ErrorResponse`, недостаточно средств для резервирования           |
+| ID        | Источник         |    Вид     | Требование                                                 | Предусловие                                   | Шаги                                                                              | Ожидаемый результат                                                                           |
+| :-------- | :--------------- | :--------: | :--------------------------------------------------------- | :-------------------------------------------- | :-------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| **TC-01** | КЭ: status       | Позитивный | ТЗ 04, п. 2                                                | Карта ACTIVE, срок валиден, баланс 20000      | POST `/api/internal/authorize`, amount=1000                                       | HTTP 200: APPROVED, `responseCode="00"`, сгенерирован уникальный RRN (12 цифр) и authCode     |
+| **TC-02** | КЭ: status       | Негативный | ТЗ 04, п. 2                                                | Карта INACTIVE                                | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, причина `CARD_INACTIVE`                                                   |
+| **TC-03** | КЭ: status       | Негативный | ТЗ 04, п. 2                                                | Карта BLOCKED                                 | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, причина `CARD_BLOCKED`                                                    |
+| **TC-04** | КЭ: status       | Негативный | ТЗ 04, п. 2                                                | Карта EXPIRED                                 | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`                               |
+| **TC-05** | BV-04            | Негативный | ТЗ 04, п. 2 (шаг 3)                                        | Карта ACTIVE, expiryDate=0826 (прошлый месяц) | POST `/api/internal/authorize`, amount=1000                                       | HTTP 403: DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`                               |
+| **TC-06** | BV-01            | Позитивный | ТЗ 04, п. 4                                                | Карта ACTIVE, остаток суточного лимита 8000   | POST `/api/internal/authorize`, amount=8000                                       | HTTP 200: APPROVED, `responseCode="00"`, суточный лимит исчерпан полностью                    |
+| **TC-07** | BV-01            | Негативный | ТЗ 04, п. 4                                                | Карта ACTIVE, остаток суточного лимита 8000   | POST `/api/internal/authorize`, amount=8001                                       | HTTP 400: DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT`                       |
+| **TC-08** | BV-02            | Негативный | ТЗ 04, п. 4                                                | Карта ACTIVE, остаток месячного лимита 25000  | POST `/api/internal/authorize`, amount=25001                                      | HTTP 400: DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT`                       |
+| **TC-09** | BV-03            | Негативный | ТЗ 04, п. 2 (шаг 6)                                        | Карта ACTIVE, баланс = 20000                  | POST `/api/internal/authorize`, amount=20001                                      | HTTP 422: DECLINED, `responseCode="51"`, причина `INSUFFICIENT_FUNDS`                         |
+| **TC-10** | КЭ: CMS          | Негативный | ТЗ 04, п. 5                                                | CMS остановлен / имитация таймаута            | POST `/api/internal/authorize`, amount=1000                                       | HTTP 503: DECLINED, `responseCode="05"`, причина `SERVICE_UNAVAILABLE`                        |
+| **TC-11** | КЭ: CMS create   | Позитивный | ТЗ 05, п. 2                                                | База данных CMS доступна                      | POST `/api/cards` с валидными параметрами BIN 400000                              | HTTP 201 Created: сгенерирован 16-значный PAN с корректным Луном, срок +3 года, статус ACTIVE |
+| **TC-12** | КЭ: CMS read     | Негативный | ТЗ 05, п. 2                                                | База данных CMS доступна                      | GET `/api/cards/4000001234567890` (16 цифр, валиден по формату, отсутствует в БД) | HTTP 404 Not Found                                                                            |
+| **TC-13** | КЭ: CMS update   | Позитивный | ТЗ 05, п. 2                                                | Карта ACTIVE создана                          | PATCH `/api/cards/{pan}` с новым `availableBalance`                               | HTTP 200 OK: поле обновлено, остальные не изменены                                            |
+| **TC-14** | КЭ: CMS delete   | Позитивный | ТЗ 05, п. 2                                                | Карта ACTIVE создана                          | DELETE `/api/cards/{pan}`                                                         | HTTP 204 No Content: статус карты = DELETED, карта не возвращается в GET                      |
+| **TC-15** | КЭ: CMS bin      | Негативный | ТЗ 05, п. 2                                                | База данных CMS доступна                      | POST `/api/cards` с `bin=999999` (нет в таблице BIN)                              | HTTP 400 Bad Request: ошибка валидации BIN                                                    |
+| **TC-16** | КЭ: CMS generate | Позитивный | ТЗ 05, п. 3                                                | База данных CMS доступна                      | POST `/api/cards/generate`, body: `{count: 100, bins: ["400000"]}`                | HTTP 201 Created: 100 карт, распределение статусов ≈ 95/3/2                                   |
+| **TC-17** | КЭ: Reserve      | Позитивный | ТЗ 05, п. 5                                                | Карта существует, баланс 20000                | POST `/api/cards/{pan}/reserve`, body: `{amount: 1000, rrn: "123456789012"}`      | HTTP 200 OK: доступный баланс уменьшен до 19000                                               |
+| **TC-18** | BV-08            | Негативный | ТЗ 05, п. 5                                                | Карта существует, баланс 20000                | POST `/api/cards/{pan}/reserve`, body: `{amount: 20001, rrn: "123456789013"}`     | HTTP 402 Payment Required: `ErrorResponse`, недостаточно средств для резервирования           |
+| **TC-19** | КЭ: Reserve rrn  | Негативный | Реализация: миграция V5.6 (в ТЗ 05 требование отсутствует) | Карта существует, rrn уже использован         | POST `/api/cards/{pan}/reserve` с тем же `rrn` для того же `pan`                  | HTTP 409 Conflict: ошибка уникальности (rrn, pan)                                             |
 
-### 4.1. Тест-кейсы из попарного набора (pairwise)
+### 4.1. Тест-кейсы из попарного набора Authorization (pairwise)
 
 Проецирование 25 сгенерированных строк `cases.txt` в тест-кейсы Authorization Service. Каждая строка набора — отдельный тест-кейс.
 
@@ -151,3 +192,38 @@ IF [expiry] = "expired" THEN [amount_vs_balance] = "below";
 | **TC-PW-25** |   25   | INACTIVE, below, below, below, current_month              | POST `/api/internal/authorize`, pos, electronics  | DECLINED, причина `CARD_INACTIVE`                             |
 
 > **Примечание.** В кейсах TC-PW-09, TC-PW-14, TC-PW-19 одновременно превышены баланс и лимит. Ожидаемый результат приведён по ТЗ [`tz/04-authorization.md`](tz/04-authorization.md) (лимиты проверяются раньше баланса → код 61).
+
+### 4.2. Тест-кейсы из попарного набора Card-Management (pairwise)
+
+Проецирование 26 сгенерированных строк `cases-card-management.txt` в тест-кейсы Card Management Service. Каждая строка набора — отдельный тест-кейс.
+
+| ID           | № стр. | Операция / PAN / BIN / Expiry / Status / Amount       | Шаги                                                         | Ожидаемый результат                                                   |
+| :----------- | :----: | :---------------------------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------- |
+| **TC-CM-01** |   1    | delete, valid, known, mmyy, INACTIVE, below           | DELETE `/api/cards/{pan}`                                    | 204 No Content, статус DELETED                                        |
+| **TC-CM-02** |   2    | read, wrong_length, unknown, empty, ACTIVE, below     | GET `/api/cards/{pan}` (PAN длиной ≠ 16)                     | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-CM-03** |   3    | reserve, valid, known, mmyy, ACTIVE, equal            | POST `/api/cards/{pan}/reserve`, amount = balance            | 200 OK, `availableBalance` = 0                                        |
+| **TC-CM-04** |   4    | create, valid, unknown, iso, ACTIVE, below            | POST `/api/cards`, `bin=999999`, `expiryDate=2029-09`        | 400 Bad Request: ошибка валидации BIN и формата expiryDate            |
+| **TC-CM-05** |   5    | create, valid, known, empty, DELETED, below           | POST `/api/cards`, `expiryDate` пустой                       | 400 Bad Request: ошибка валидации формата expiryDate                  |
+| **TC-CM-06** |   6    | read, invalid_luhn, known, mmyy, BLOCKED, below       | GET `/api/cards/{pan}` (PAN не проходит Луна)                | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-CM-07** |   7    | delete, invalid_luhn, unknown, iso, ACTIVE, below     | DELETE `/api/cards/{pan}` (PAN не проходит Луна)             | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-CM-08** |   8    | update, wrong_length, known, iso, BLOCKED, above      | PATCH `/api/cards/{pan}` (PAN длиной ≠ 16)                   | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-CM-09** |   9    | create, valid, unknown, mmyy, INACTIVE, below         | POST `/api/cards`, `bin=999999`                              | 400 Bad Request: ошибка валидации BIN                                 |
+| **TC-CM-10** |   10   | update, invalid_luhn, unknown, empty, INACTIVE, equal | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-CM-11** |   11   | read, valid, unknown, iso, DELETED, below             | GET `/api/cards/{pan}` (карта удалена)                       | 404 Not Found: карта не возвращается                                  |
+| **TC-CM-12** |   12   | generate, valid, unknown, mmyy, ACTIVE, below         | POST `/api/cards/generate`, `{count: 100, bins: ["400000"]}` | 201 Created: 100 карт, распределение статусов ≈ 95/3/2                |
+| **TC-CM-13** |   13   | reserve, valid, known, mmyy, INACTIVE, above          | POST `/api/cards/{pan}/reserve`, amount > balance            | 402 Payment Required: недостаточно средств                            |
+| **TC-CM-14** |   14   | generate, valid, unknown, empty, BLOCKED, below       | POST `/api/cards/generate`, `{count: 100}`                   | 201 Created: 100 карт, среди них ≈ 2% BLOCKED                         |
+| **TC-CM-15** |   15   | create, valid, known, mmyy, BLOCKED, below            | POST `/api/cards` с валидными параметрами BIN 400000         | 201 Created: PAN 16 цифр, Луна корректен, срок +3 года, статус ACTIVE |
+| **TC-CM-16** |   16   | update, invalid_luhn, unknown, mmyy, ACTIVE, above    | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-CM-17** |   17   | generate, valid, known, mmyy, DELETED, below          | POST `/api/cards/generate`, `{count: 100, bins: ["400000"]}` | 201 Created: 100 карт, распределение статусов ≈ 95/3/2                |
+| **TC-CM-18** |   18   | generate, valid, unknown, iso, INACTIVE, below        | POST `/api/cards/generate`, `{count: 100}`                   | 201 Created: 100 карт, среди них ≈ 3% INACTIVE                        |
+| **TC-CM-19** |   19   | update, wrong_length, unknown, iso, DELETED, equal    | PATCH `/api/cards/{pan}` (PAN длиной ≠ 16)                   | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-CM-20** |   20   | delete, wrong_length, unknown, empty, DELETED, below  | DELETE `/api/cards/{pan}` (PAN длиной ≠ 16)                  | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-CM-21** |   21   | reserve, valid, known, mmyy, BLOCKED, below           | POST `/api/cards/{pan}/reserve`, amount ≤ balance            | 200 OK, `availableBalance` уменьшен                                   |
+| **TC-CM-22** |   22   | read, wrong_length, known, mmyy, INACTIVE, below      | GET `/api/cards/{pan}` (PAN длиной ≠ 16)                     | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-CM-23** |   23   | update, invalid_luhn, known, empty, DELETED, above    | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-CM-24** |   24   | update, valid, unknown, mmyy, INACTIVE, below         | PATCH `/api/cards/{pan}` с новым `availableBalance`          | 200 OK: поле обновлено, остальные не изменены                         |
+| **TC-CM-25** |   25   | delete, invalid_luhn, unknown, mmyy, BLOCKED, below   | DELETE `/api/cards/{pan}` (PAN не проходит Луна)             | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-CM-26** |   26   | update, valid, unknown, empty, BLOCKED, equal         | PATCH `/api/cards/{pan}` с новым `availableBalance`          | 200 OK: поле обновлено, остальные не изменены                         |
+
+> **Примечание.** В кейсах TC-CM-04, TC-CM-05, TC-CM-09, TC-CM-10, TC-CM-16, TC-CM-19, TC-CM-20, TC-CM-22, TC-CM-23, TC-CM-25 одновременно невалидны два и более параметра. Это следствие попарного покрытия: набор проверяет сочетания, а не изолированные невалидные классы. Для локализации причины отказа такие сочетания при прогоне разбиваются на отдельные проверки (правило «один невалидный класс — один тест-кейс» соблюдается на уровне КЭ в разделе 1.2).

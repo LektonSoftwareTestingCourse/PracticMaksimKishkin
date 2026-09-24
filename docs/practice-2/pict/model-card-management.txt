@@ -1,0 +1,13 @@
+operation:          create, read, update, delete, reserve, generate
+pan_validity:       valid, invalid_luhn, wrong_length
+bin:                known, unknown
+expiry_format:      mmyy, iso, empty
+status:             ACTIVE, INACTIVE, BLOCKED, DELETED
+amount_vs_balance:  below, equal, above
+
+IF [operation] = "create" THEN [pan_validity] = "valid" AND [amount_vs_balance] = "below";
+IF [operation] = "generate" THEN [pan_validity] = "valid" AND [amount_vs_balance] = "below";
+IF [operation] = "read" THEN [amount_vs_balance] = "below";
+IF [operation] = "delete" THEN [amount_vs_balance] = "below";
+IF [operation] = "reserve" THEN [pan_validity] = "valid" AND [bin] = "known" AND [expiry_format] = "mmyy";
+IF [status] = "DELETED" THEN [operation] <> "reserve";
