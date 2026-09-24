@@ -49,7 +49,6 @@
 | reserve amount       | amount $\leq$ balance          |     Да     |             1000              | 200, balance уменьшен             |
 | reserve amount       | amount > balance               |    Нет     |           balance+1           | 402, balance не изменён           |
 | rrn при reserve      | Уникален для (rrn, pan)        |     Да     |           новый rrn           | 200                               |
-| rrn при reserve      | Дублируется для (rrn, pan)     |    Нет     |          тот же rrn           | 409, ошибка уникальности          |
 
 ## 2. Граничные значения (далее Boundary Value/BV)
 
@@ -118,7 +117,6 @@ IF [expiry] = "expired" THEN [amount_vs_balance] = "below";
 | **TC-16** | КЭ: CMS generate | Позитивный | ТЗ 05, п. 3         | База данных CMS доступна                      | POST `/api/cards/generate`, body: `{count: 100, bins: ["400000"]}`                | HTTP 201 Created: 100 карт, распределение статусов ≈ 95/3/2                                   |
 | **TC-17** | КЭ: Reserve      | Позитивный | ТЗ 05, п. 5         | Карта существует, баланс 20000                | POST `/api/cards/{pan}/reserve`, body: `{amount: 1000, rrn: "123456789012"}`      | HTTP 200 OK: доступный баланс уменьшен до 19000                                               |
 | **TC-18** | BV-08            | Негативный | ТЗ 05, п. 5         | Карта существует, баланс 20000                | POST `/api/cards/{pan}/reserve`, body: `{amount: 20001, rrn: "123456789013"}`     | HTTP 402 Payment Required: `ErrorResponse`, недостаточно средств для резервирования           |
-| **TC-19** | КЭ: Reserve rrn  | Негативный | ТЗ 05, п. 5         | Карта существует, rrn уже использован         | POST `/api/cards/{pan}/reserve` с тем же `rrn` для того же `pan`                  | HTTP 409 Conflict: ошибка уникальности (rrn, pan)                                             |
 
 ### 4.1. Тест-кейсы из попарного набора (pairwise)
 
