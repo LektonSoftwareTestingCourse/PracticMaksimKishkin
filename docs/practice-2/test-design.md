@@ -155,69 +155,67 @@ IF [status] = "DELETED" THEN [operation] <> "reserve";
 
 ### 4.1. Тест-кейсы из попарного набора Authorization (pairwise)
 
-Проецирование 25 сгенерированных строк `cases.txt` в тест-кейсы Authorization Service. Каждая строка набора — отдельный тест-кейс.
+Проецирование 25 сгенерированных строк `cases.txt` в тест-кейсы Authorization Service.
 
-| ID           | № стр. | Предусловие (Status / Daily / Monthly / Balance / Expiry) | Шаги (Terminal / MCC)                             | Ожидаемый результат                                           |
-| :----------- | :----: | :-------------------------------------------------------- | :------------------------------------------------ | :------------------------------------------------------------ |
-| **TC-PW-01** |   1    | EXPIRED, below, below, below, valid                       | POST `/api/internal/authorize`, pos, restaurant   | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
-| **TC-PW-02** |   2    | BLOCKED, below, below, below, current_month               | POST `/api/internal/authorize`, atm, grocery      | DECLINED, причина `CARD_BLOCKED`                              |
-| **TC-PW-03** |   3    | INACTIVE, below, below, below, expired                    | POST `/api/internal/authorize`, ecom, grocery     | DECLINED, причина `CARD_INACTIVE` (статус первичен)           |
-| **TC-PW-04** |   4    | INACTIVE, below, below, below, valid                      | POST `/api/internal/authorize`, atm, travel       | DECLINED, причина `CARD_INACTIVE`                             |
-| **TC-PW-05** |   5    | EXPIRED, below, below, below, current_month               | POST `/api/internal/authorize`, ecom, electronics | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
-| **TC-PW-06** |   6    | BLOCKED, below, below, below, expired                     | POST `/api/internal/authorize`, pos, electronics  | DECLINED, причина `CARD_BLOCKED`                              |
-| **TC-PW-07** |   7    | EXPIRED, below, below, below, current_month               | POST `/api/internal/authorize`, pos, grocery      | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
-| **TC-PW-08** |   8    | EXPIRED, below, below, below, expired                     | POST `/api/internal/authorize`, atm, travel       | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
-| **TC-PW-09** |   9    | ACTIVE, equal, above, above, valid                        | POST `/api/internal/authorize`, ecom, travel      | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
-| **TC-PW-10** |   10   | ACTIVE, above, equal, equal, current_month                | POST `/api/internal/authorize`, pos, travel       | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
-| **TC-PW-11** |   11   | ACTIVE, equal, equal, below, expired                      | POST `/api/internal/authorize`, atm, electronics  | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
-| **TC-PW-12** |   12   | ACTIVE, above, above, equal, valid                        | POST `/api/internal/authorize`, atm, grocery      | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
-| **TC-PW-13** |   13   | ACTIVE, below, equal, above, current_month                | POST `/api/internal/authorize`, atm, restaurant   | DECLINED, `responseCode="51"`, причина `INSUFFICIENT_FUNDS`   |
-| **TC-PW-14** |   14   | ACTIVE, above, above, above, valid                        | POST `/api/internal/authorize`, pos, electronics  | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
-| **TC-PW-15** |   15   | INACTIVE, below, below, below, current_month              | POST `/api/internal/authorize`, ecom, restaurant  | DECLINED, причина `CARD_INACTIVE`                             |
-| **TC-PW-16** |   16   | ACTIVE, equal, above, equal, current_month                | POST `/api/internal/authorize`, ecom, restaurant  | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
-| **TC-PW-17** |   17   | ACTIVE, below, above, below, expired                      | POST `/api/internal/authorize`, pos, electronics  | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
-| **TC-PW-18** |   18   | BLOCKED, below, below, below, valid                       | POST `/api/internal/authorize`, ecom, travel      | DECLINED, причина `CARD_BLOCKED`                              |
-| **TC-PW-19** |   19   | ACTIVE, above, equal, above, valid                        | POST `/api/internal/authorize`, ecom, grocery     | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
-| **TC-PW-20** |   20   | ACTIVE, equal, below, equal, current_month                | POST `/api/internal/authorize`, pos, grocery      | APPROVED, `responseCode="00"`                                 |
-| **TC-PW-21** |   21   | ACTIVE, above, below, below, expired                      | POST `/api/internal/authorize`, pos, restaurant   | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
-| **TC-PW-22** |   22   | BLOCKED, below, below, below, current_month               | POST `/api/internal/authorize`, pos, restaurant   | DECLINED, причина `CARD_BLOCKED`                              |
-| **TC-PW-23** |   23   | ACTIVE, below, below, above, valid                        | POST `/api/internal/authorize`, pos, electronics  | DECLINED, `responseCode="51"`, причина `INSUFFICIENT_FUNDS`   |
-| **TC-PW-24** |   24   | ACTIVE, below, equal, equal, current_month                | POST `/api/internal/authorize`, pos, electronics  | APPROVED, `responseCode="00"`                                 |
-| **TC-PW-25** |   25   | INACTIVE, below, below, below, current_month              | POST `/api/internal/authorize`, pos, electronics  | DECLINED, причина `CARD_INACTIVE`                             |
+| ID                | № стр. | Предусловие (Status / Daily / Monthly / Balance / Expiry) | Шаги (Terminal / MCC)                             | Ожидаемый результат                                           |
+| :---------------- | :----: | :-------------------------------------------------------- | :------------------------------------------------ | :------------------------------------------------------------ |
+| **TC-PW-AUTH-01** |   1    | EXPIRED, below, below, below, valid                       | POST `/api/internal/authorize`, pos, restaurant   | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
+| **TC-PW-AUTH-02** |   2    | BLOCKED, below, below, below, current_month               | POST `/api/internal/authorize`, atm, grocery      | DECLINED, причина `CARD_BLOCKED`                              |
+| **TC-PW-AUTH-03** |   3    | INACTIVE, below, below, below, expired                    | POST `/api/internal/authorize`, ecom, grocery     | DECLINED, причина `CARD_INACTIVE` (статус первичен)           |
+| **TC-PW-AUTH-04** |   4    | INACTIVE, below, below, below, valid                      | POST `/api/internal/authorize`, atm, travel       | DECLINED, причина `CARD_INACTIVE`                             |
+| **TC-PW-AUTH-05** |   5    | EXPIRED, below, below, below, current_month               | POST `/api/internal/authorize`, ecom, electronics | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
+| **TC-PW-AUTH-06** |   6    | BLOCKED, below, below, below, expired                     | POST `/api/internal/authorize`, pos, electronics  | DECLINED, причина `CARD_BLOCKED`                              |
+| **TC-PW-AUTH-07** |   7    | EXPIRED, below, below, below, current_month               | POST `/api/internal/authorize`, pos, grocery      | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
+| **TC-PW-AUTH-08** |   8    | EXPIRED, below, below, below, expired                     | POST `/api/internal/authorize`, atm, travel       | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
+| **TC-PW-AUTH-09** |   9    | ACTIVE, equal, above, above, valid                        | POST `/api/internal/authorize`, ecom, travel      | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
+| **TC-PW-AUTH-10** |   10   | ACTIVE, above, equal, equal, current_month                | POST `/api/internal/authorize`, pos, travel       | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
+| **TC-PW-AUTH-11** |   11   | ACTIVE, equal, equal, below, expired                      | POST `/api/internal/authorize`, atm, electronics  | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
+| **TC-PW-AUTH-12** |   12   | ACTIVE, above, above, equal, valid                        | POST `/api/internal/authorize`, atm, grocery      | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
+| **TC-PW-AUTH-13** |   13   | ACTIVE, below, equal, above, current_month                | POST `/api/internal/authorize`, atm, restaurant   | DECLINED, `responseCode="51"`, причина `INSUFFICIENT_FUNDS`   |
+| **TC-PW-AUTH-14** |   14   | ACTIVE, above, above, above, valid                        | POST `/api/internal/authorize`, pos, electronics  | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
+| **TC-PW-AUTH-15** |   15   | INACTIVE, below, below, below, current_month              | POST `/api/internal/authorize`, ecom, restaurant  | DECLINED, причина `CARD_INACTIVE`                             |
+| **TC-PW-AUTH-16** |   16   | ACTIVE, equal, above, equal, current_month                | POST `/api/internal/authorize`, ecom, restaurant  | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
+| **TC-PW-AUTH-17** |   17   | ACTIVE, below, above, below, expired                      | POST `/api/internal/authorize`, pos, electronics  | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
+| **TC-PW-AUTH-18** |   18   | BLOCKED, below, below, below, valid                       | POST `/api/internal/authorize`, ecom, travel      | DECLINED, причина `CARD_BLOCKED`                              |
+| **TC-PW-AUTH-19** |   19   | ACTIVE, above, equal, above, valid                        | POST `/api/internal/authorize`, ecom, grocery     | DECLINED, `responseCode="61"`, причина `EXCEEDS_AMOUNT_LIMIT` |
+| **TC-PW-AUTH-20** |   20   | ACTIVE, equal, below, equal, current_month                | POST `/api/internal/authorize`, pos, grocery      | APPROVED, `responseCode="00"`                                 |
+| **TC-PW-AUTH-21** |   21   | ACTIVE, above, below, below, expired                      | POST `/api/internal/authorize`, pos, restaurant   | DECLINED, `responseCode="54"`, причина `CARD_EXPIRED`         |
+| **TC-PW-AUTH-22** |   22   | BLOCKED, below, below, below, current_month               | POST `/api/internal/authorize`, pos, restaurant   | DECLINED, причина `CARD_BLOCKED`                              |
+| **TC-PW-AUTH-23** |   23   | ACTIVE, below, below, above, valid                        | POST `/api/internal/authorize`, pos, electronics  | DECLINED, `responseCode="51"`, причина `INSUFFICIENT_FUNDS`   |
+| **TC-PW-AUTH-24** |   24   | ACTIVE, below, equal, equal, current_month                | POST `/api/internal/authorize`, pos, electronics  | APPROVED, `responseCode="00"`                                 |
+| **TC-PW-AUTH-25** |   25   | INACTIVE, below, below, below, current_month              | POST `/api/internal/authorize`, pos, electronics  | DECLINED, причина `CARD_INACTIVE`                             |
 
-> **Примечание.** В кейсах TC-PW-09, TC-PW-14, TC-PW-19 одновременно превышены баланс и лимит. Ожидаемый результат приведён по ТЗ [`tz/04-authorization.md`](tz/04-authorization.md) (лимиты проверяются раньше баланса → код 61).
+> **Примечание.** В кейсах TC-PW-AUTH-09, TC-PW-AUTH-14, TC-PW-AUTH-19 одновременно превышены баланс и лимит. Ожидаемый результат приведён по ТЗ [`tz/04-authorization.md`](tz/04-authorization.md) (лимиты проверяются раньше баланса → код 61).
 
 ### 4.2. Тест-кейсы из попарного набора Card-Management (pairwise)
 
-Проецирование 26 сгенерированных строк `cases-card-management.txt` в тест-кейсы Card Management Service. Каждая строка набора — отдельный тест-кейс.
+Проецирование 26 сгенерированных строк `cases-card-management.txt` в тест-кейсы Card Management Service.
 
-| ID           | № стр. | Операция / PAN / BIN / Expiry / Status / Amount       | Шаги                                                         | Ожидаемый результат                                                   |
-| :----------- | :----: | :---------------------------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------- |
-| **TC-CM-01** |   1    | delete, valid, known, mmyy, INACTIVE, below           | DELETE `/api/cards/{pan}`                                    | 204 No Content, статус DELETED                                        |
-| **TC-CM-02** |   2    | read, wrong_length, unknown, empty, ACTIVE, below     | GET `/api/cards/{pan}` (PAN длиной ≠ 16)                     | 400 Bad Request: ошибка валидации длины PAN                           |
-| **TC-CM-03** |   3    | reserve, valid, known, mmyy, ACTIVE, equal            | POST `/api/cards/{pan}/reserve`, amount = balance            | 200 OK, `availableBalance` = 0                                        |
-| **TC-CM-04** |   4    | create, valid, unknown, iso, ACTIVE, below            | POST `/api/cards`, `bin=999999`, `expiryDate=2029-09`        | 400 Bad Request: ошибка валидации BIN и формата expiryDate            |
-| **TC-CM-05** |   5    | create, valid, known, empty, DELETED, below           | POST `/api/cards`, `expiryDate` пустой                       | 400 Bad Request: ошибка валидации формата expiryDate                  |
-| **TC-CM-06** |   6    | read, invalid_luhn, known, mmyy, BLOCKED, below       | GET `/api/cards/{pan}` (PAN не проходит Луна)                | 400 Bad Request: ошибка валидации PAN                                 |
-| **TC-CM-07** |   7    | delete, invalid_luhn, unknown, iso, ACTIVE, below     | DELETE `/api/cards/{pan}` (PAN не проходит Луна)             | 400 Bad Request: ошибка валидации PAN                                 |
-| **TC-CM-08** |   8    | update, wrong_length, known, iso, BLOCKED, above      | PATCH `/api/cards/{pan}` (PAN длиной ≠ 16)                   | 400 Bad Request: ошибка валидации длины PAN                           |
-| **TC-CM-09** |   9    | create, valid, unknown, mmyy, INACTIVE, below         | POST `/api/cards`, `bin=999999`                              | 400 Bad Request: ошибка валидации BIN                                 |
-| **TC-CM-10** |   10   | update, invalid_luhn, unknown, empty, INACTIVE, equal | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
-| **TC-CM-11** |   11   | read, valid, unknown, iso, DELETED, below             | GET `/api/cards/{pan}` (карта удалена)                       | 404 Not Found: карта не возвращается                                  |
-| **TC-CM-12** |   12   | generate, valid, unknown, mmyy, ACTIVE, below         | POST `/api/cards/generate`, `{count: 100, bins: ["400000"]}` | 201 Created: 100 карт, распределение статусов ≈ 95/3/2                |
-| **TC-CM-13** |   13   | reserve, valid, known, mmyy, INACTIVE, above          | POST `/api/cards/{pan}/reserve`, amount > balance            | 402 Payment Required: недостаточно средств                            |
-| **TC-CM-14** |   14   | generate, valid, unknown, empty, BLOCKED, below       | POST `/api/cards/generate`, `{count: 100}`                   | 201 Created: 100 карт, среди них ≈ 2% BLOCKED                         |
-| **TC-CM-15** |   15   | create, valid, known, mmyy, BLOCKED, below            | POST `/api/cards` с валидными параметрами BIN 400000         | 201 Created: PAN 16 цифр, Луна корректен, срок +3 года, статус ACTIVE |
-| **TC-CM-16** |   16   | update, invalid_luhn, unknown, mmyy, ACTIVE, above    | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
-| **TC-CM-17** |   17   | generate, valid, known, mmyy, DELETED, below          | POST `/api/cards/generate`, `{count: 100, bins: ["400000"]}` | 201 Created: 100 карт, распределение статусов ≈ 95/3/2                |
-| **TC-CM-18** |   18   | generate, valid, unknown, iso, INACTIVE, below        | POST `/api/cards/generate`, `{count: 100}`                   | 201 Created: 100 карт, среди них ≈ 3% INACTIVE                        |
-| **TC-CM-19** |   19   | update, wrong_length, unknown, iso, DELETED, equal    | PATCH `/api/cards/{pan}` (PAN длиной ≠ 16)                   | 400 Bad Request: ошибка валидации длины PAN                           |
-| **TC-CM-20** |   20   | delete, wrong_length, unknown, empty, DELETED, below  | DELETE `/api/cards/{pan}` (PAN длиной ≠ 16)                  | 400 Bad Request: ошибка валидации длины PAN                           |
-| **TC-CM-21** |   21   | reserve, valid, known, mmyy, BLOCKED, below           | POST `/api/cards/{pan}/reserve`, amount ≤ balance            | 200 OK, `availableBalance` уменьшен                                   |
-| **TC-CM-22** |   22   | read, wrong_length, known, mmyy, INACTIVE, below      | GET `/api/cards/{pan}` (PAN длиной ≠ 16)                     | 400 Bad Request: ошибка валидации длины PAN                           |
-| **TC-CM-23** |   23   | update, invalid_luhn, known, empty, DELETED, above    | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
-| **TC-CM-24** |   24   | update, valid, unknown, mmyy, INACTIVE, below         | PATCH `/api/cards/{pan}` с новым `availableBalance`          | 200 OK: поле обновлено, остальные не изменены                         |
-| **TC-CM-25** |   25   | delete, invalid_luhn, unknown, mmyy, BLOCKED, below   | DELETE `/api/cards/{pan}` (PAN не проходит Луна)             | 400 Bad Request: ошибка валидации PAN                                 |
-| **TC-CM-26** |   26   | update, valid, unknown, empty, BLOCKED, equal         | PATCH `/api/cards/{pan}` с новым `availableBalance`          | 200 OK: поле обновлено, остальные не изменены                         |
-
-> **Примечание.** В кейсах TC-CM-04, TC-CM-05, TC-CM-09, TC-CM-10, TC-CM-16, TC-CM-19, TC-CM-20, TC-CM-22, TC-CM-23, TC-CM-25 одновременно невалидны два и более параметра. Это следствие попарного покрытия: набор проверяет сочетания, а не изолированные невалидные классы. Для локализации причины отказа такие сочетания при прогоне разбиваются на отдельные проверки (правило «один невалидный класс — один тест-кейс» соблюдается на уровне КЭ в разделе 1.2).
+| ID              | № стр. | Операция / PAN / BIN / Expiry / Status / Amount       | Шаги                                                         | Ожидаемый результат                                                   |
+| :-------------- | :----: | :---------------------------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------- |
+| **TC-PW-CM-01** |   1    | delete, valid, known, mmyy, INACTIVE, below           | DELETE `/api/cards/{pan}`                                    | 204 No Content, статус DELETED                                        |
+| **TC-PW-CM-02** |   2    | read, wrong_length, unknown, empty, ACTIVE, below     | GET `/api/cards/{pan}` (PAN длиной ≠ 16)                     | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-PW-CM-03** |   3    | reserve, valid, known, mmyy, ACTIVE, equal            | POST `/api/cards/{pan}/reserve`, amount = balance            | 200 OK, `availableBalance` = 0                                        |
+| **TC-PW-CM-04** |   4    | create, valid, unknown, iso, ACTIVE, below            | POST `/api/cards`, `bin=999999`, `expiryDate=2029-09`        | 400 Bad Request: ошибка валидации BIN и формата expiryDate            |
+| **TC-PW-CM-05** |   5    | create, valid, known, empty, DELETED, below           | POST `/api/cards`, `expiryDate` пустой                       | 400 Bad Request: ошибка валидации формата expiryDate                  |
+| **TC-PW-CM-06** |   6    | read, invalid_luhn, known, mmyy, BLOCKED, below       | GET `/api/cards/{pan}` (PAN не проходит Луна)                | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-PW-CM-07** |   7    | delete, invalid_luhn, unknown, iso, ACTIVE, below     | DELETE `/api/cards/{pan}` (PAN не проходит Луна)             | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-PW-CM-08** |   8    | update, wrong_length, known, iso, BLOCKED, above      | PATCH `/api/cards/{pan}` (PAN длиной ≠ 16)                   | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-PW-CM-09** |   9    | create, valid, unknown, mmyy, INACTIVE, below         | POST `/api/cards`, `bin=999999`                              | 400 Bad Request: ошибка валидации BIN                                 |
+| **TC-PW-CM-10** |   10   | update, invalid_luhn, unknown, empty, INACTIVE, equal | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-PW-CM-11** |   11   | read, valid, unknown, iso, DELETED, below             | GET `/api/cards/{pan}` (карта удалена)                       | 404 Not Found: карта не возвращается                                  |
+| **TC-PW-CM-12** |   12   | generate, valid, unknown, mmyy, ACTIVE, below         | POST `/api/cards/generate`, `{count: 100, bins: ["400000"]}` | 201 Created: 100 карт, распределение статусов ≈ 95/3/2                |
+| **TC-PW-CM-13** |   13   | reserve, valid, known, mmyy, INACTIVE, above          | POST `/api/cards/{pan}/reserve`, amount > balance            | 402 Payment Required: недостаточно средств                            |
+| **TC-PW-CM-14** |   14   | generate, valid, unknown, empty, BLOCKED, below       | POST `/api/cards/generate`, `{count: 100}`                   | 201 Created: 100 карт, среди них ≈ 2% BLOCKED                         |
+| **TC-PW-CM-15** |   15   | create, valid, known, mmyy, BLOCKED, below            | POST `/api/cards` с валидными параметрами BIN 400000         | 201 Created: PAN 16 цифр, Луна корректен, срок +3 года, статус ACTIVE |
+| **TC-PW-CM-16** |   16   | update, invalid_luhn, unknown, mmyy, ACTIVE, above    | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-PW-CM-17** |   17   | generate, valid, known, mmyy, DELETED, below          | POST `/api/cards/generate`, `{count: 100, bins: ["400000"]}` | 201 Created: 100 карт, распределение статусов ≈ 95/3/2                |
+| **TC-PW-CM-18** |   18   | generate, valid, unknown, iso, INACTIVE, below        | POST `/api/cards/generate`, `{count: 100}`                   | 201 Created: 100 карт, среди них ≈ 3% INACTIVE                        |
+| **TC-PW-CM-19** |   19   | update, wrong_length, unknown, iso, DELETED, equal    | PATCH `/api/cards/{pan}` (PAN длиной ≠ 16)                   | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-PW-CM-20** |   20   | delete, wrong_length, unknown, empty, DELETED, below  | DELETE `/api/cards/{pan}` (PAN длиной ≠ 16)                  | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-PW-CM-21** |   21   | reserve, valid, known, mmyy, BLOCKED, below           | POST `/api/cards/{pan}/reserve`, amount ≤ balance            | 200 OK, `availableBalance` уменьшен                                   |
+| **TC-PW-CM-22** |   22   | read, wrong_length, known, mmyy, INACTIVE, below      | GET `/api/cards/{pan}` (PAN длиной ≠ 16)                     | 400 Bad Request: ошибка валидации длины PAN                           |
+| **TC-PW-CM-23** |   23   | update, invalid_luhn, known, empty, DELETED, above    | PATCH `/api/cards/{pan}` (PAN не проходит Луна)              | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-PW-CM-24** |   24   | update, valid, unknown, mmyy, INACTIVE, below         | PATCH `/api/cards/{pan}` с новым `availableBalance`          | 200 OK: поле обновлено, остальные не изменены                         |
+| **TC-PW-CM-25** |   25   | delete, invalid_luhn, unknown, mmyy, BLOCKED, below   | DELETE `/api/cards/{pan}` (PAN не проходит Луна)             | 400 Bad Request: ошибка валидации PAN                                 |
+| **TC-PW-CM-26** |   26   | update, valid, unknown, empty, BLOCKED, equal         | PATCH `/api/cards/{pan}` с новым `availableBalance`          | 200 OK: поле обновлено, остальные не изменены                         |
