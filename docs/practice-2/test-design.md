@@ -28,7 +28,8 @@
 | Поле / условие       | Класс                          | Валидность |        Пример значения        | Ожидаемый результат               |
 | -------------------- | ------------------------------ | :--------: | :---------------------------: | --------------------------------- |
 | operation            | create                         |     Да     |        POST /api/cards        | 201 Created, status=ACTIVE        |
-| operation            | read                           |     Да     |     GET /api/cards/{pan}      | 200 OK или 404                    |
+| operation            | read                           |     Да     |     GET /api/cards/{pan}      | 200 OK                            |
+| operation            | read                           |     Да     | GET /api/cards/{invalid_pan}  | 404 Not Found                     |
 | operation            | update                         |     Да     |    PATCH /api/cards/{pan}     | 200 OK, поля обновлены            |
 | operation            | delete                         |     Да     |    DELETE /api/cards/{pan}    | 204 No Content, status=DELETED    |
 | operation            | reserve                        |     Да     | POST /api/cards/{pan}/reserve | 200 OK, balance уменьшен          |
