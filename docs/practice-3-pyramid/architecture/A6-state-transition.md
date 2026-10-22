@@ -46,7 +46,7 @@ stateDiagram-v2
     [*] --> APPROVED : authorize() успех (code 00)
     [*] --> DECLINED : authorize() отказ (05/14/51/54/61/96)
     
-    APPROVED --> APPROVED : [Успешный publish] transaction.log + confirm [Успешный rollback] reservation completed
+    APPROVED --> APPROVED : [Успешный publish] transaction.log + confirm <br/>[Успешный rollback] reservation completed
     
     DECLINED --> DECLINED : publish transaction.log\n(сообщение сохраняется Logger)
     APPROVED --> DECLINED : publish failed → rollback reservation\n(response клиенту code 96)
