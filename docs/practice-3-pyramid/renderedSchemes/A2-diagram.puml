@@ -49,4 +49,13 @@ Rel(auth, db, "JDBC limit_usage", "JDBC sync")
 Rel(log, db, "JDBC transactions", "JDBC sync")
 Rel(ns, db, "JDBC card_notifications", "JDBC sync")
 Rel(merch, db, "JDBC merchants/terminals", "JDBC sync")
+
+Rel(user, web, "Открывает в браузере", "HTTPS")
+Rel(web, gw, "REST /api/dashboard/**", "HTTPS")
+Rel(web, log, "WebSocket /ws/transactions", "WS")
+
+Rel(term, gw, "POST /api/transactions", "HTTP/JSON")
+Rel(merch, gw, "POST /api/transactions", "HTTP/JSON")
+
+Rel(auto, term, "Масштабирует (1..10 инстансов)", "Docker CLI")
 @enduml
