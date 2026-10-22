@@ -5,23 +5,7 @@
 
 ## Диаграмма
 
-```mermaid
-C4Context
-    title C4 Level 1 — Context: Симулятор процессингового центра (СМП)
-
-    Person(terminal, "POS-терминал", "Эмулируется Terminal Simulator. Инициирует авторизацию покупки")
-    Person(merchant, "Мерчант / Эквайрер", "Эмулируется Merchant Acquirer. Передаёт MCC, комиссию")
-    Person(dashboardUser, "Пользователь дашборда", "Оператор/аналитик. Смотрит KPI, графики, транзакции")
-
-    System(smp, "СМП — Симулятор процессингового центра", "Микросервисный процессинг: маршрутизация, авторизация, резервирование, логирование, уведомления")
-
-    System_Ext(binLookup, "Внешний BIN Lookup", "Обогащение issuerId по BIN (первые 6 цифр PAN)")
-
-    Rel(terminal, smp, "POST /api/transactions (HTTP/JSON, упрощённый ISO 8583)", "HTTPS/JSON")
-    Rel(merchant, smp, "POST /api/transactions (HTTP/JSON)", "HTTPS/JSON")
-    Rel(dashboardUser, smp, "REST /api/dashboard/**, WebSocket /ws/transactions", "HTTPS + WS")
-    Rel(smp, binLookup, "GET /api/bin/{bin} (HTTP, sync, 3s connect / 5s read)", "HTTP/JSON")
-```
+![C4 Context](/docs/practice-3-pyramid/renderedSchemes/A1_Level_1.svg)
 
 ## Акторы и протоколы входа
 

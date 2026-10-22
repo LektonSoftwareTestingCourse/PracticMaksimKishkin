@@ -1,7 +1,7 @@
 # А4. Sequence — путь транзакции (happy path + declined + reversal 0400)
 
 > **Что было в проекте:** mermaid sequence в [`docs/architecture.md`](../../../docs/architecture.md:65-105) покрывает только happy path.
-> **Что сделано:** три сценария — happy path, declined (карта BLOCKED), reversal (mti 0400 при отсутствии publisher-confirm). Показано, где sync-вызов, где async-«вилка».
+> **Что сделано:** три сценария — happy path, declined (карта BLOCKED), reversal (mti 0400 при отсутствии publisher-confirm).
 
 ## A4.1 Happy path (APPROVED)
 
@@ -101,7 +101,7 @@ sequenceDiagram
     AUTH-->>SW: APPROVED (rrn)
     SW->>RMQ: publish transaction.log (publisher confirm, timeout 2s)
     RMQ--xSW: confirm НЕ получен за 2s (брокер недоступен)
-    Note over SW: tryLog() вернул false для исходного APPROVED; Switch выполняет rollback синхронно
+    Note over SW: tryLog() вернул false для исходного APPROVED, Switch выполняет rollback синхронно
     SW->>AUTH: POST /api/internal/rollback (reversal mti=0400, rrn)
     AUTH->>CMS: POST /api/cards/{pan}/rollback
     CMS-->>AUTH: 200 OK (reservation откатана)

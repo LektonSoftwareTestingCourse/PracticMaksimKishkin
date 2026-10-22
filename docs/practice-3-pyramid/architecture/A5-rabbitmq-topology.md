@@ -1,7 +1,7 @@
 # А5. RabbitMQ-топология (exchange → queue → consumer, DLX/DLQ, confirms, retry)
 
 > **Что было в проекте:** в [`docs/architecture.md:240-265`](../../../docs/architecture.md:240-265) есть **таблица** топологии и текстовое описание, но нет **диаграммы**.
-> **Что сделано:** визуализирована топология с DLX/DLQ, publisher confirms (2s), retry (3, TTL 60s). Всё сверено с кодом конфигураций RabbitMQ.
+> **Что сделано:** визуализирована топология с DLX/DLQ, publisher confirms (2s), retry (3, TTL 60s).
 
 ## Диаграмма
 

@@ -1,0 +1,52 @@
+@startuml A2-diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4 Level 2 — Container: СМП
+
+LAYOUT_TOP_DOWN()
+LAYOUT_WITH_LEGEND()
+
+AddRelTag("async", $lineStyle=DashedLine())
+
+Person(terminal, "POS-терминал", "Эмулятор")
+Person(merchant, "Мерчант/Эквайрер", "Эмулятор")
+Person(user, "Пользователь дашборда", "Оператор")
+
+System_Boundary(smp, "СМП") {
+    Container(gw, "Gateway", "Spring Cloud Gateway, :8080", "Единая точка входа, rate limit, circuit breaker, маскирование логов")
+    Container(cms, "Card Management", "Spring Boot, :8081", "CRUD карт, Luhn, reserve/rollback, outbox событий")
+    Container(sw, "Switch / Router", "Spring Boot, :8082", "Маршрутизация по BIN, вызов Authorization, publish в Logger")
+    Container(auth, "Authorization", "Spring Boot, :8083", "APPROVED/DECLINED, лимиты, RRN/authCode, reversal")
+    Container(bin, "Bin Lookup", "Spring Boot, :8096", "Обогащение issuerId по BIN")
+    Container(term, "Terminal Simulator", "Spring Boot, :8085", "Эмуляция POS и сценариев")
+    Container(merch, "Merchant Acquirer", "Spring Boot, :8084", "Эмуляция мерчантов, MCC, комиссия")
+    Container(log, "Transaction Logger", "Spring Boot, :8088", "Приём/поиск транзакций, статистика, WebSocket")
+    Container(ns, "Notification Service", "Spring Boot, :8097", "Приём карточных событий, хранение уведомлений")
+    Container(web, "Web Dashboard", "React SPA, :3000", "KPI, графики, таблица, экспорт CSV")
+    Container(auto, "Autoscaler", "Docker CLI + shell", "Опциональный compose-профиль observability")
+    
+    ContainerDb(db, "PostgreSQL", "PostgreSQL 16, :5432", "Общая БД smp_db, Flyway-миграции")
+    ContainerQueue(rmq, "RabbitMQ", "RabbitMQ 3.13, :5672/:15672", "Асинхронный брокер, DLX/DLQ, publisher confirms")
+}
+
+Rel(terminal, gw, "POST /api/transactions", "HTTP/JSON")
+Rel(merchant, gw, "POST /api/transactions", "HTTP/JSON")
+Rel(user, gw, "REST /api/dashboard/**", "HTTPS")
+Rel(user, log, "WebSocket /ws/transactions", "WS")
+
+Rel(gw, sw, "POST /api/internal/route", "HTTP sync")
+Rel(sw, auth, "POST /api/internal/authorize", "HTTP sync")
+Rel(auth, bin, "GET /api/bin/{bin}", "HTTP sync")
+Rel(auth, cms, "GET card / reserve / rollback", "HTTP sync")
+
+Rel(sw, rmq, "publish transaction.log → smp.transactions", "AMQP", $tags="async")
+Rel(rmq, log, "consume transaction-log", "AMQP", $tags="async")
+Rel(cms, rmq, "outbox publish card.* → smp.card-events", "AMQP", $tags="async")
+Rel(rmq, ns, "consume card-notifications", "AMQP", $tags="async")
+
+Rel(cms, db, "JDBC", "JDBC sync")
+Rel(auth, db, "JDBC limit_usage", "JDBC sync")
+Rel(log, db, "JDBC transactions", "JDBC sync")
+Rel(ns, db, "JDBC card_notifications", "JDBC sync")
+Rel(merch, db, "JDBC merchants/terminals", "JDBC sync")
+@enduml

@@ -1,0 +1,32 @@
+@startuml A3.1-diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Level 3 — Component: Authorization Service
+
+LAYOUT_TOP_DOWN()
+LAYOUT_WITH_LEGEND()
+
+Container_Boundary(auth_boundary, "Authorization Service") {
+    Component(ctrl, "AuthControllerImpl", "REST Controller", "POST /api/internal/authorize, /api/internal/rollback; маппинг declineReason → HTTP-статус")
+    Component(svc, "AuthServiceImpl", "Service", "Бизнес-логика: проверка статуса/срока/баланса/лимитов, RRN, authCode, reversal")
+    Component(notifier, "AuthorizationEventNotifierImpl", "Event Notifier", "Внутренняя событийная модель (лог-события)")
+    Component(binClient, "BinLookupClient", "HTTP Client", "GET /api/bin/{bin} — обогащение issuerId, graceful degradation")
+    Component(cmsClient, "CardManagementClientImpl", "HTTP Client", "GET card, POST reserve, POST rollback к CMS")
+    Component(limitRepo, "LimitUsageRepository", "Repository (JDBC)", "upsertLimitUsage, fetchRrnBlock — таблица limit_usage")
+    Component(cleanup, "CleanupServiceImpl", "Service", "Очистка устаревших записей лимитов")
+}
+
+ContainerDb(db, "PostgreSQL", "PostgreSQL 16", "limit_usage")
+Container(cms, "Card Management", "Spring Boot", "CMS")
+Container(bin, "Bin Lookup", "Spring Boot", "BIN API")
+
+Rel(ctrl, svc, "authorize() / rollback()", "Java")
+Rel(svc, notifier, "notify(event)", "Java")
+Rel(svc, binClient, "getIssuerId(pan)", "Java")
+Rel(svc, cmsClient, "getCard / reserve / rollback", "Java")
+Rel(svc, limitRepo, "upsertLimitUsage / fetchRrnBlock", "Java")
+Rel(cleanup, limitRepo, "delete old", "Java")
+Rel(binClient, bin, "GET /api/bin/{bin}", "HTTP sync")
+Rel(cmsClient, cms, "GET/POST", "HTTP sync")
+Rel(limitRepo, db, "JDBC", "JDBC sync")
+@enduml

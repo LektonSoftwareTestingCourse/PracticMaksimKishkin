@@ -1,0 +1,46 @@
+@startuml A3.2-diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4 Level 3 — Component: Card Management Service
+
+LAYOUT_TOP_DOWN()
+LAYOUT_WITH_LEGEND()
+
+AddRelTag("async", $lineStyle=DashedLine())
+
+Container_Boundary(cms_boundary, "Card Management Service") {
+    Component(cardCtrl, "CardController", "REST Controller", "POST/GET/PATCH/DELETE /api/cards")
+    Component(genCtrl, "CardGeneratorController", "REST Controller", "POST /api/cards/generate")
+    Component(binCtrl, "BinIssuerController", "REST Controller", "Справочник BIN → issuerId")
+    Component(cardSvc, "CardServiceImpl", "Service", "CRUD, reserve, rollback, bulkUpdateStatus")
+    Component(genSvc, "CardGeneratorService", "Service", "Генерация карт, распределение статусов 95/3/2")
+    Component(panGen, "PanGenerator", "Service", "Генерация PAN по Луну")
+    Component(luhn, "LuhnValidator", "Service", "Проверка контрольной суммы")
+    Component(outboxProc, "OutboxEventProcessorImpl", "Outbox Processor", "Публикация PENDING-событий в RabbitMQ, retry, FAILED")
+    Component(notifier, "CardEventNotifierImpl", "Event Notifier", "Внутренние события → outbox")
+    Component(cardRepo, "CardRepository", "Repository (JDBC)", "cards")
+    Component(resRepo, "ReservationRepository", "Repository (JDBC)", "reservations")
+    Component(rollRepo, "ReservationRollbackRepository", "Repository (JDBC)", "reservations_rollbacks")
+    Component(outboxRepo, "OutboxRepository", "Repository (JDBC)", "outbox_events")
+}
+
+ContainerDb(db, "PostgreSQL", "PostgreSQL 16", "cards, reservations, outbox_events")
+ContainerQueue(rmq, "RabbitMQ", "RabbitMQ 3.13", "smp.card-events")
+
+Rel(cardCtrl, cardSvc, "create/get/patch/delete/reserve/rollback", "Java")
+Rel(genCtrl, genSvc, "generate(count, bins)", "Java")
+Rel(binCtrl, cardSvc, "getIssuerId", "Java")
+Rel(cardSvc, panGen, "generatePan(bin)", "Java")
+Rel(panGen, luhn, "validate", "Java")
+Rel(cardSvc, notifier, "notifyListeners(event)", "Java")
+Rel(notifier, outboxProc, "save(event) → outbox", "Java")
+Rel(cardSvc, cardRepo, "create/findByPan/update", "Java")
+Rel(cardSvc, resRepo, "save/findByRrnAndPan", "Java")
+Rel(cardSvc, rollRepo, "save", "Java")
+Rel(outboxProc, outboxRepo, "save/processSingleEvent", "Java")
+Rel(outboxProc, rmq, "convertAndSend card.*", "AMQP", $tags="async")
+Rel(cardRepo, db, "JDBC", "JDBC sync")
+Rel(resRepo, db, "JDBC", "JDBC sync")
+Rel(rollRepo, db, "JDBC", "JDBC sync")
+Rel(outboxRepo, db, "JDBC", "JDBC sync")
+@enduml

@@ -1,6 +1,7 @@
 # А6. State-transition (Card.status + жизненный цикл Transaction)
 
-> **Что было в проекте:** state-диаграмм нет. Есть enum [`CardStatus.java`](../../../services/card-management/src/main/java/com/processing/cardmanagement/models/CardStatus.java) и логика `authorize()`. **Что сделано:** построены диаграммы состояний для `Card.status` и жизненного цикла Transaction, собранные из кода.
+> **Что было в проекте:** state-диаграмм нет. Есть enum [`CardStatus.java`](../../../services/card-management/src/main/java/com/processing/cardmanagement/models/CardStatus.java) и логика `authorize()`.
+>**Что сделано:** построены диаграммы состояний для `Card.status` и жизненного цикла Transaction, собранные из кода.
 
 ## A6.1 Card.status
 
@@ -44,10 +45,11 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> APPROVED : authorize() успех (code 00)
     [*] --> DECLINED : authorize() отказ (05/14/51/54/61/96)
-    APPROVED --> APPROVED : publish transaction.log + confirm\n(сообщение сохраняется Logger)
+    
+    APPROVED --> APPROVED : [Успешный publish] transaction.log + confirm [Успешный rollback] reservation completed
+    
     DECLINED --> DECLINED : publish transaction.log\n(сообщение сохраняется Logger)
     APPROVED --> DECLINED : publish failed → rollback reservation\n(response клиенту code 96)
-    APPROVED --> APPROVED : rollback reservation completed\n(исходная запись имеет status=APPROVED)
 ```
 
 **Evidence:**
