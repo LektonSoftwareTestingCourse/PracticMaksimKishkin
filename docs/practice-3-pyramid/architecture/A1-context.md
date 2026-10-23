@@ -1,6 +1,6 @@
 # А1. C4 Level 1 — Context (границы СМП и внешние акторы)
 
-> **Что было в проекте:** отдельной Context-диаграммы нет. В [`docs/architecture.md`](../../../docs/architecture.md:5-59) есть общая mermaid-схема, но границы «СМП vs внешний мир» явно не проведены.
+> **Что было в проекте:** отдельной Context-диаграммы нет. В [`docs/architecture.md`](../../../docs/architecture.md#5-59) есть общая mermaid-схема, но границы «СМП vs внешний мир» явно не проведены.
 > **Что сделано:** построена Context-диаграмма, где СМП — единый «чёрный ящик», а снаружи перечислены акторы и протоколы их входа
 
 ## Диаграмма
@@ -11,10 +11,10 @@
 
 | Актор                 | Что это                | Протокол входа   | Точка входа в СМП                                      | Evidence (код)                                                                                                                                                                                                                                                                            |
 | --------------------- | ---------------------- | ---------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POS-терминал          | Эмулятор терминала     | HTTP POST JSON   | Gateway `POST /api/transactions`                       | [`TerminalSimulatorController`](../../../services/terminal-simulator/src/main/java/com/processing/terminalsimulator/controller/TerminalSimulatorController.java), [`application.yml`](../../../services/gateway/src/main/resources/application.yml:65-73)                                 |
-| Мерчант / Эквайрер    | Эмулятор мерчанта      | HTTP POST JSON   | Gateway `POST /api/transactions`                       | [`MerchantAcquirerClient`](../../../services/switch/src/main/java/com/processing/service/MerchantAcquirerClient.java), [`application.yml`](../../../services/gateway/src/main/resources/application.yml:92-97)                                                                            |
+| POS-терминал          | Эмулятор терминала     | HTTP POST JSON   | Gateway `POST /api/transactions`                       | [`TerminalSimulatorController`](../../../services/terminal-simulator/src/main/java/com/processing/terminalsimulator/controller/TerminalSimulatorController.java), [`application.yml`](../../../services/gateway/src/main/resources/application.yml#65-73)                                 |
+| Мерчант / Эквайрер    | Эмулятор мерчанта      | HTTP POST JSON   | Gateway `POST /api/transactions`                       | [`MerchantAcquirerClient`](../../../services/switch/src/main/java/com/processing/service/MerchantAcquirerClient.java), [`application.yml`](../../../services/gateway/src/main/resources/application.yml#92-97)                                                                            |
 | Пользователь дашборда | Оператор React SPA     | REST + WebSocket | Gateway `GET /api/dashboard/**`, `WS /ws/transactions` | [`DashboardController`](../../../services/transaction-logger/src/main/java/com/processing/transactionlogger/controller/DashboardController.java), [`WebSocketConfig`](../../../services/transaction-logger/src/main/java/com/processing/transactionlogger/websocket/WebSocketConfig.java) |
-| Внешний BIN Lookup    | Внешний API обогащения | HTTP GET (sync)  | Authorization → `GET /api/bin/{bin}`                   | [`BinLookupClient`](../../../services/authorization/src/main/java/com/processing/authorization/client/BinLookupClient.java:51-69)                                                                                                                                                         |
+| Внешний BIN Lookup    | Внешний API обогащения | HTTP GET (sync)  | Authorization → `GET /api/bin/{bin}`                   | [`BinLookupClient`](../../../services/authorization/src/main/java/com/processing/authorization/client/BinLookupClient.java#51-69)                                                                                                                                                         |
 
 ## Границы системы
 

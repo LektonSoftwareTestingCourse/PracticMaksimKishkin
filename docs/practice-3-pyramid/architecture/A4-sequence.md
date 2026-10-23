@@ -1,6 +1,6 @@
 # А4. Sequence — путь транзакции (happy path + declined + reversal 0400)
 
-> **Что было в проекте:** mermaid sequence в [`docs/architecture.md`](../../../docs/architecture.md:65-105) покрывает только happy path.
+> **Что было в проекте:** mermaid sequence в [`docs/architecture.md`](../../../docs/architecture.md#65-105) покрывает только happy path.
 > **Что сделано:** три сценария — happy path, declined (карта BLOCKED), reversal (mti 0400 при отсутствии publisher-confirm).
 
 ## A4.1 Happy path (APPROVED)
@@ -40,9 +40,9 @@ sequenceDiagram
     LOG->>LOG: store to PostgreSQL
 ```
 
-**Evidence:** [`RouteService.route()`](../../../services/switch/src/main/java/com/processing/service/RouteService.java:55-99),
-[`AuthServiceImpl.authorize()`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:43-176),
-[`LoggerClient.log()`](../../../services/switch/src/main/java/com/processing/service/LoggerClient.java:38-51).
+**Evidence:** [`RouteService.route()`](../../../services/switch/src/main/java/com/processing/service/RouteService.java#55-99),
+[`AuthServiceImpl.authorize()`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#43-176),
+[`LoggerClient.log()`](../../../services/switch/src/main/java/com/processing/service/LoggerClient.java#38-51).
 
 ## A4.2 Declined (карта BLOCKED)
 
@@ -72,9 +72,9 @@ sequenceDiagram
     LOG->>LOG: store DECLINED to PostgreSQL
 ```
 
-**Evidence:** [`AuthServiceImpl.java:77-103`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:77-103)
+**Evidence:** [`AuthServiceImpl.java:77-103`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#77-103)
 (ветка `!currCardStatus.equals(ACTIVE)` → `CARD_BLOCKED`),
-[`AuthControllerImpl.java:76-85`](../../../services/authorization/src/main/java/com/processing/authorization/controller/AuthControllerImpl.java:76-85)
+[`AuthControllerImpl.java:76-85`](../../../services/authorization/src/main/java/com/processing/authorization/controller/AuthControllerImpl.java#76-85)
 (внутренний Auth-контроллер маппит `CARD_BLOCKED` в HTTP 403; внешний Switch
 перехватывает тело ответа и возвращает клиенту `ResponseEntity.ok`, поэтому
 сквозной Gateway-ответ в этом сценарии — HTTP 200 с `status=DECLINED`).
@@ -110,12 +110,12 @@ sequenceDiagram
     GW-->>T: HTTP 200 DECLINED responseCode=96
 ```
 
-**Evidence:** [`RouteService.java:84-92`](../../../services/switch/src/main/java/com/processing/service/RouteService.java:84-92)
+**Evidence:** [`RouteService.java:84-92`](/services/switch/src/main/java/com/processing/service/RouteService.java#84-92)
 (`if (!logged && STATUS_APPROVED) → rollback → systemError`),
-[`LoggerClient.java:47-50`](../../../services/switch/src/main/java/com/processing/service/LoggerClient.java:47-50)
+[`LoggerClient.java:47-50`](../../../services/switch/src/main/java/com/processing/service/LoggerClient.java#47-50)
 (`AmqpException → return false`),
-[`application.yml`](../../../services/switch/src/main/resources/application.yml:10-11) (`publisher-confirm-type: correlated`),
-[`docs/architecture.md:230`](../../../docs/architecture.md:230) (код 96).
+[`application.yml`](../../../services/switch/src/main/resources/application.yml#10-11) (`publisher-confirm-type: correlated`),
+[`docs/architecture.md:230`](../../../docs/architecture.md#230) (код 96).
 
 ## Где sync, где async
 

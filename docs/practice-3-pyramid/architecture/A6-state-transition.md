@@ -1,7 +1,7 @@
 # А6. State-transition (Card.status + жизненный цикл Transaction)
 
 > **Что было в проекте:** state-диаграмм нет. Есть enum [`CardStatus.java`](../../../services/card-management/src/main/java/com/processing/cardmanagement/models/CardStatus.java) и логика `authorize()`.
->**Что сделано:** построены диаграммы состояний для `Card.status` и жизненного цикла Transaction, собранные из кода.
+> **Что сделано:** построены диаграммы состояний для `Card.status` и жизненного цикла Transaction, собранные из кода.
 
 ## A6.1 Card.status
 
@@ -23,21 +23,21 @@ stateDiagram-v2
 **Evidence:**
 
 - Enum: [`CardStatus.java`](../../../services/card-management/src/main/java/com/processing/cardmanagement/models/CardStatus.java) — `ACTIVE, INACTIVE, BLOCKED, EXPIRED, DELETED`.
-- Создание всегда `ACTIVE`: [`CardServiceImpl.createCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java:47-55).
-- Смена статуса: [`CardServiceImpl.patchCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java:143-163),
-  [`bulkUpdateStatus()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java:230-264).
-- Удаление → `DELETED`: [`CardServiceImpl.deleteCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java:166-171).
-- `EXPIRED` определяется в Authorization по сроку: [`AuthServiceImpl.java:105-112`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:105-112).
+- Создание всегда `ACTIVE`: [`CardServiceImpl.createCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java#47-55).
+- Смена статуса: [`CardServiceImpl.patchCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java#143-163),
+  [`bulkUpdateStatus()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java#230-264).
+- Удаление → `DELETED`: [`CardServiceImpl.deleteCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java#166-171).
+- `EXPIRED` определяется в Authorization по сроку: [`AuthServiceImpl.java:105-112`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#105-112).
 
 ### Влияние статуса на авторизацию
 
 | Статус   | Результат authorize()               | Код | Evidence                                                                                                                                           |
 | -------- | ----------------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ACTIVE   | продолжает проверки                 | —   | [`AuthServiceImpl.java:77`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:77)           |
-| INACTIVE | DECLINED `CARD_INACTIVE`            | 05  | [`AuthServiceImpl.java:91-96`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:91-96)     |
-| BLOCKED  | DECLINED `CARD_BLOCKED`             | 05  | [`AuthServiceImpl.java:85-90`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:85-90)     |
-| EXPIRED  | DECLINED `CARD_EXPIRED`             | 54  | [`AuthServiceImpl.java:79-84`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:79-84)     |
-| DELETED  | карта не найдена → `CARD_NOT_FOUND` | 14  | [`CardServiceImpl.getCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java:112-116) |
+| ACTIVE   | продолжает проверки                 | —   | [`AuthServiceImpl.java:77`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#77)           |
+| INACTIVE | DECLINED `CARD_INACTIVE`            | 05  | [`AuthServiceImpl.java:91-96`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#91-96)     |
+| BLOCKED  | DECLINED `CARD_BLOCKED`             | 05  | [`AuthServiceImpl.java:85-90`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#85-90)     |
+| EXPIRED  | DECLINED `CARD_EXPIRED`             | 54  | [`AuthServiceImpl.java:79-84`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#79-84)     |
+| DELETED  | карта не найдена → `CARD_NOT_FOUND` | 14  | [`CardServiceImpl.getCard()`](../../../services/card-management/src/main/java/com/processing/cardmanagement/services/CardServiceImpl.java#112-116) |
 
 ## A6.2 Наблюдаемый жизненный цикл Transaction
 
@@ -45,9 +45,9 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> APPROVED : authorize() успех (code 00)
     [*] --> DECLINED : authorize() отказ (05/14/51/54/61/96)
-    
+
     APPROVED --> APPROVED : [Успешный publish] transaction.log + confirm <br/>[Успешный rollback] reservation completed
-    
+
     DECLINED --> DECLINED : publish transaction.log\n(сообщение сохраняется Logger)
     APPROVED --> DECLINED : publish failed → rollback reservation\n(response клиенту code 96)
 ```
@@ -55,10 +55,10 @@ stateDiagram-v2
 **Evidence:**
 
 - Статусы транзакции: [`TransactionStatus`](../../../services/common/src/main/java/com/processing/common/dto/transactionlogger/TransactionStatus.java) (`APPROVED`, `DECLINED`). Отдельных значений `ROLLED_BACK`, `LOGGED` и `PENDING` в модели нет.
-- APPROVED/DECLINED: [`AuthServiceImpl.authorize()`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:43-176).
-- Откат резервирования при ошибке публикации: [`RouteService.java:87-92`](../../../services/switch/src/main/java/com/processing/service/RouteService.java:87-92),
-  [`AuthServiceImpl.rollback()`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java:223-246). Это отдельная операция над reservation, а не новый `TransactionStatus`.
-- Логирование: [`LoggerClient.log()`](../../../services/switch/src/main/java/com/processing/service/LoggerClient.java:38-51).
+- APPROVED/DECLINED: [`AuthServiceImpl.authorize()`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#43-176).
+- Откат резервирования при ошибке публикации: [`RouteService.java:87-92`](../../../services/switch/src/main/java/com/processing/service/RouteService.java#87-92),
+  [`AuthServiceImpl.rollback()`](../../../services/authorization/src/main/java/com/processing/authorization/services/AuthServiceImpl.java#223-246). Это отдельная операция над reservation, а не новый `TransactionStatus`.
+- Логирование: [`LoggerClient.log()`](../../../services/switch/src/main/java/com/processing/service/LoggerClient.java#38-51).
 
 ## Переходы → тест-кейсы
 
