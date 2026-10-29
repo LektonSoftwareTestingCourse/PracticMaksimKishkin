@@ -1,5 +1,5 @@
 @startuml C4 Level 1
-    
+
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
 title C4 Level 1 — Context: Симулятор процессингового центра (СМП)

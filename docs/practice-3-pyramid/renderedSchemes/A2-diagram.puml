@@ -24,7 +24,7 @@ System_Boundary(smp, "СМП") {
     Container(ns, "Notification Service", "Spring Boot, :8097", "Приём карточных событий, хранение уведомлений")
     Container(web, "Web Dashboard", "React SPA, :3000", "KPI, графики, таблица, экспорт CSV")
     Container(auto, "Autoscaler", "Docker CLI + shell", "Опциональный compose-профиль observability")
-    
+
     ContainerDb(db, "PostgreSQL", "PostgreSQL 16, :5432", "Общая БД smp_db, Flyway-миграции")
     ContainerQueue(rmq, "RabbitMQ", "RabbitMQ 3.13, :5672/:15672", "Асинхронный брокер, DLX/DLQ, publisher confirms")
 }
