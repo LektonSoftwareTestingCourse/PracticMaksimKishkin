@@ -29,7 +29,6 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-@SuppressWarnings("checkstyle:MultipleStringLiterals")
 class AuthorizationClientTest {
 
     private static final String AUTHORIZATION_URL = "http://auth-service";

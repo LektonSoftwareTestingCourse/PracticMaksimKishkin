@@ -216,6 +216,7 @@
                     </executions>
                     <configuration>
                         <configLocation>checkstyle.xml</configLocation>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         <excludeGeneratedSources>true</excludeGeneratedSources>
                         <excludes>**/target/**</excludes>
                         <consoleOutput>true</consoleOutput>

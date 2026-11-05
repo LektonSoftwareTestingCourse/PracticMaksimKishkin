@@ -90,7 +90,7 @@ class AuthorizationRequestNormalizerTest {
     }
 
     @Test
-    void shouldKeepEmptyMerchantIdAsIs() {
+    void shouldKeepNullMerchantIdAsIs() {
         // Act
         String normalized = AuthorizationRequestNormalizer.normalizeMerchantId(null);
 

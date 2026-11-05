@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,7 +37,6 @@ class AuthServiceImplSimpleTest {
     private static final String BIN = "400000";
     private static final String ISSUER_ID = "ISS001";
     private static final BigDecimal AMOUNT = new BigDecimal("1000");
-    private static final Instant REQUEST_TIME = Instant.parse("2026-10-29T10:00:00Z");
     private static final UUID CARD_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final Instant CREATED_AT = Instant.parse("2026-01-01T00:00:00Z");
 
@@ -52,10 +52,12 @@ class AuthServiceImplSimpleTest {
     @Mock
     private CardManagementClient cardManagementClient;
 
+    private Instant requestTime;
     private AuthServiceImpl authService;
 
     @BeforeEach
     void setUp() {
+        requestTime = Instant.now();
         authService = new AuthServiceImpl(
                 limitUsageRepository,
                 eventNotifier,
@@ -73,7 +75,7 @@ class AuthServiceImplSimpleTest {
         when(limitUsageRepository.fetchRrnBlock()).thenReturn(100L);
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_APPROVED);
@@ -92,7 +94,7 @@ class AuthServiceImplSimpleTest {
         when(binLookupClient.getIssuerId(PAN)).thenReturn(Optional.of(ISSUER_ID));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_DECLINED);
@@ -106,7 +108,7 @@ class AuthServiceImplSimpleTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new CardNotFoundException(PAN));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_DECLINED);
@@ -118,7 +120,7 @@ class AuthServiceImplSimpleTest {
     private AuthorizationRequest validRequest() {
         return new AuthorizationRequest(
                 "0100", "000001", PAN, "000000",
-                AMOUNT, "643", REQUEST_TIME,
+                AMOUNT, "643", requestTime,
                 "TERM0001", "POS", "MERCH0000000002", "5045", "ACQ002", ISSUER_ID);
     }
 
@@ -129,7 +131,7 @@ class AuthServiceImplSimpleTest {
     private CardModel cardWithStatus(CardModelStatus status) {
         return new CardModel(
                 CARD_ID, PAN, BIN, "IVAN IVANOV",
-                YearMonth.now().plusYears(2), status, "643",
+                YearMonth.from(requestTime.atZone(ZoneOffset.UTC)).plusYears(2), status, "643",
                 new BigDecimal("8000"), new BigDecimal("25000"), new BigDecimal("20000"),
                 ISSUER_ID, CREATED_AT);
     }

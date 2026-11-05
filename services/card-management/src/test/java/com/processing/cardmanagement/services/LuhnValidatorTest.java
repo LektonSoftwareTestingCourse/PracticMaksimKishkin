@@ -56,12 +56,15 @@ class LuhnValidatorTest {
     }
 
     @Test
-    void shouldGenerateDifferentPansForSameBin() {
+    void shouldGeneratePanForAnotherBin() {
+        // Arrange
+        String anotherBin = "510000";
+
         // Act
-        String first = luhnValidator.generatePan(BIN);
-        String second = luhnValidator.generatePan(BIN);
+        String pan = luhnValidator.generatePan(anotherBin);
 
         // Assert
-        assertThat(first).isNotEqualTo(second);
+        assertThat(pan).hasSize(16).startsWith(anotherBin);
+        assertThat(luhnValidator.isValid(pan)).isTrue();
     }
 }

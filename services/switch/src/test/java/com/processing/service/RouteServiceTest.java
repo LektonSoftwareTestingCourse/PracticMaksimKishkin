@@ -35,7 +35,7 @@ class RouteServiceTest {
     private static final String RRN = "123456789012";
     private static final String AUTH_CODE = "ABC123";
     private static final BigDecimal AMOUNT = new BigDecimal("1000");
-    private static final Instant REQUEST_TIME = Instant.parse("2026-10-29T10:00:00Z");
+    private Instant requestTime;
 
     @Mock
     private RoutingService routingService;
@@ -53,6 +53,7 @@ class RouteServiceTest {
 
     @BeforeEach
     void setUp() {
+        requestTime = Instant.now();
         routeService = new RouteService(routingService, authorizationClient, acquiringFeeClient, loggerClient);
     }
 
@@ -191,20 +192,20 @@ class RouteServiceTest {
 
     private AuthorizationRequest request(String pan) {
         return new AuthorizationRequest(
-                "0100", STAN, pan, "000000", AMOUNT, "643", REQUEST_TIME,
+                "0100", STAN, pan, "000000", AMOUNT, "643", requestTime,
                 "TERM0001", "POS", "MERCH0000000002", "5045", "ACQ002", null);
     }
 
     private AuthorizationResponse approvedResponse() {
-        return AuthorizationResponse.approved(request(PAN), RRN, AUTH_CODE, REQUEST_TIME);
+        return AuthorizationResponse.approved(request(PAN), RRN, AUTH_CODE, requestTime);
     }
 
     private AuthorizationResponse declinedResponse() {
         return AuthorizationResponse.declined(request(PAN), "CARD_BLOCKED",
-                AuthorizationResponse.CODE_DECLINED_GENERAL, REQUEST_TIME);
+                AuthorizationResponse.CODE_DECLINED_GENERAL, requestTime);
     }
 
     private RollbackResponse approvedRollback() {
-        return RollbackResponse.approved(new RollbackRequest(RRN, PAN, AMOUNT), REQUEST_TIME);
+        return RollbackResponse.approved(new RollbackRequest(RRN, PAN, AMOUNT), requestTime);
     }
 }

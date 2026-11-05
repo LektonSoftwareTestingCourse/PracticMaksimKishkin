@@ -36,6 +36,7 @@ import org.springframework.dao.DuplicateKeyException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,7 +59,6 @@ class AuthServiceImplTest {
     private static final BigDecimal BALANCE = new BigDecimal("20000");
     private static final BigDecimal DAILY_LIMIT = new BigDecimal("8000");
     private static final BigDecimal MONTHLY_LIMIT = new BigDecimal("25000");
-    private static final Instant REQUEST_TIME = Instant.parse("2026-10-29T10:00:00Z");
     private static final UUID CARD_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final Instant CREATED_AT = Instant.parse("2026-01-01T00:00:00Z");
 
@@ -74,10 +74,12 @@ class AuthServiceImplTest {
     @Mock
     private CardManagementClient cardManagementClient;
 
+    private Instant requestTime;
     private AuthServiceImpl authService;
 
     @BeforeEach
     void setUp() {
+        requestTime = Instant.now();
         authService = new AuthServiceImpl(
                 limitUsageRepository,
                 eventNotifier,
@@ -93,7 +95,7 @@ class AuthServiceImplTest {
         when(limitUsageRepository.fetchRrnBlock()).thenReturn(100L);
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_APPROVED);
@@ -110,7 +112,7 @@ class AuthServiceImplTest {
         givenCard(cardWithStatus(status));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_DECLINED);
@@ -128,7 +130,7 @@ class AuthServiceImplTest {
         givenCard(cardWithStatus(status));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo(reason);
@@ -141,7 +143,7 @@ class AuthServiceImplTest {
         givenCard(cardWithStatus(null));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_DECLINED);
@@ -151,11 +153,12 @@ class AuthServiceImplTest {
     @Test
     void shouldDeclineWhenCardExpiredByDate() {
         // Arrange
-        CardModel expiredCard = cardWithStatusAndExpiry(CardModelStatus.ACTIVE, YearMonth.now().minusMonths(1));
+        YearMonth expiredMonth = YearMonth.from(requestTime.atZone(ZoneOffset.UTC)).minusMonths(1);
+        CardModel expiredCard = cardWithStatusAndExpiry(CardModelStatus.ACTIVE, expiredMonth);
         givenCard(expiredCard);
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("CARD_EXPIRED");
@@ -170,7 +173,7 @@ class AuthServiceImplTest {
         when(limitUsageRepository.fetchRrnBlock()).thenReturn(100L);
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_APPROVED);
@@ -182,7 +185,7 @@ class AuthServiceImplTest {
         givenCard(cardWithBalance(CardModelStatus.ACTIVE, AMOUNT.subtract(BigDecimal.ONE)));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("INSUFFICIENT_FUNDS");
@@ -196,7 +199,7 @@ class AuthServiceImplTest {
         when(limitUsageRepository.upsertLimitUsage(any(), any(), any(), any(), any())).thenReturn(0);
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("EXCEEDS_AMOUNT_LIMIT");
@@ -214,7 +217,7 @@ class AuthServiceImplTest {
         when(limitUsageRepository.fetchRrnBlock()).thenReturn(100L);
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(AuthorizationResponse.STATUS_APPROVED);
@@ -228,7 +231,7 @@ class AuthServiceImplTest {
                 .thenThrow(new IllegalStateException("limit_usage is down"));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("DB_UNAVAILABLE");
@@ -241,7 +244,7 @@ class AuthServiceImplTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new CardNotFoundException(PAN));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("CARD_NOT_FOUND");
@@ -254,7 +257,7 @@ class AuthServiceImplTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new InvalidGetCardRequestException("bad pan"));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.responseCode()).isEqualTo(AuthorizationResponse.CODE_CARD_NOT_FOUND);
@@ -266,7 +269,7 @@ class AuthServiceImplTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new ServiceUnavailableException("cms down"));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("SERVICE_UNAVAILABLE");
@@ -279,7 +282,7 @@ class AuthServiceImplTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new InternalCardManagerException("cms error"));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.responseCode()).isEqualTo(AuthorizationResponse.CODE_SERVICE_UNAVAILABLE);
@@ -291,7 +294,7 @@ class AuthServiceImplTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new GetCardException("unexpected status"));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.responseCode()).isEqualTo(AuthorizationResponse.CODE_SERVICE_UNAVAILABLE);
@@ -303,7 +306,7 @@ class AuthServiceImplTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new PaymentRequiredException("payment required"));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("CARD_BLOCKED");
@@ -315,7 +318,7 @@ class AuthServiceImplTest {
         when(cardManagementClient.getCard(PAN)).thenThrow(new IllegalStateException("boom"));
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("UNKNOWN_REASON");
@@ -329,7 +332,7 @@ class AuthServiceImplTest {
                 .when(cardManagementClient).reserve(any(), any(), any());
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("INSUFFICIENT_FUNDS");
@@ -344,7 +347,7 @@ class AuthServiceImplTest {
                 .when(cardManagementClient).reserve(any(), any(), any());
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("RESERVATION_FAILED");
@@ -359,7 +362,7 @@ class AuthServiceImplTest {
                 .when(cardManagementClient).reserve(any(), any(), any());
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("CARD_NOT_FOUND");
@@ -373,7 +376,7 @@ class AuthServiceImplTest {
                 .when(cardManagementClient).reserve(any(), any(), any());
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("CARD_NOT_FOUND");
@@ -387,7 +390,7 @@ class AuthServiceImplTest {
                 .when(cardManagementClient).reserve(any(), any(), any());
 
         // Act
-        AuthorizationResponse response = authService.authorize(validRequest(), REQUEST_TIME);
+        AuthorizationResponse response = authService.authorize(validRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("UNKNOWN_REASON");
@@ -396,11 +399,12 @@ class AuthServiceImplTest {
     @Test
     void shouldApproveRollbackWhenCardManagementAcceptsIt() {
         // Act
-        RollbackResponse response = authService.rollback(rollbackRequest(), REQUEST_TIME);
+        RollbackResponse response = authService.rollback(rollbackRequest(), requestTime);
 
         // Assert
         assertThat(response.status()).isEqualTo(RollbackResponse.STATUS_APPROVED);
         assertThat(response.responseCode()).isEqualTo(RollbackResponse.CODE_SUCCESS);
+        verify(cardManagementClient).rollback(any());
         verify(eventNotifier).notify(any(AuthorizationEvent.class));
     }
 
@@ -411,7 +415,7 @@ class AuthServiceImplTest {
                 .when(cardManagementClient).rollback(any());
 
         // Act
-        RollbackResponse response = authService.rollback(rollbackRequest(), REQUEST_TIME);
+        RollbackResponse response = authService.rollback(rollbackRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("ALREADY_ROLLED_BACK");
@@ -424,7 +428,7 @@ class AuthServiceImplTest {
         doThrow(new CardNotFoundException(PAN)).when(cardManagementClient).rollback(any());
 
         // Act
-        RollbackResponse response = authService.rollback(rollbackRequest(), REQUEST_TIME);
+        RollbackResponse response = authService.rollback(rollbackRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("TRANSACTION_NOT_FOUND");
@@ -437,7 +441,7 @@ class AuthServiceImplTest {
         doThrow(new InvalidRollbackRequestException("bad request")).when(cardManagementClient).rollback(any());
 
         // Act
-        RollbackResponse response = authService.rollback(rollbackRequest(), REQUEST_TIME);
+        RollbackResponse response = authService.rollback(rollbackRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("TRANSACTION_NOT_FOUND");
@@ -449,7 +453,7 @@ class AuthServiceImplTest {
         doThrow(new ServiceUnavailableException("cms down")).when(cardManagementClient).rollback(any());
 
         // Act
-        RollbackResponse response = authService.rollback(rollbackRequest(), REQUEST_TIME);
+        RollbackResponse response = authService.rollback(rollbackRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("SERVICE_UNAVAILABLE");
@@ -461,7 +465,7 @@ class AuthServiceImplTest {
         doThrow(new RollbackFailureException("rollback failed")).when(cardManagementClient).rollback(any());
 
         // Act
-        RollbackResponse response = authService.rollback(rollbackRequest(), REQUEST_TIME);
+        RollbackResponse response = authService.rollback(rollbackRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("ROLLBACK_FAILED");
@@ -474,7 +478,7 @@ class AuthServiceImplTest {
         doThrow(new IllegalStateException("boom")).when(cardManagementClient).rollback(any());
 
         // Act
-        RollbackResponse response = authService.rollback(rollbackRequest(), REQUEST_TIME);
+        RollbackResponse response = authService.rollback(rollbackRequest(), requestTime);
 
         // Assert
         assertThat(response.declineReason()).isEqualTo("UNKNOWN_REASON");
@@ -494,7 +498,7 @@ class AuthServiceImplTest {
     private AuthorizationRequest validRequest() {
         return new AuthorizationRequest(
                 "0100", STAN, PAN, "000000",
-                AMOUNT, "643", REQUEST_TIME,
+                AMOUNT, "643", requestTime,
                 "TERM0001", "POS", "MERCH0000000002", "5045", "ACQ002", ISSUER_ID);
     }
 
@@ -503,15 +507,19 @@ class AuthServiceImplTest {
     }
 
     private CardModel cardWithStatus(CardModelStatus status) {
-        return cardWithStatusAndExpiry(status, YearMonth.now().plusYears(2));
+        return cardWithStatusAndExpiry(status, cardExpiryAfter(requestTime));
     }
 
     private CardModel cardWithBalance(CardModelStatus status, BigDecimal availableBalance) {
         return new CardModel(
                 CARD_ID, PAN, BIN, "IVAN IVANOV",
-                YearMonth.now().plusYears(2), status, "643",
+                cardExpiryAfter(requestTime), status, "643",
                 DAILY_LIMIT, MONTHLY_LIMIT, availableBalance,
                 ISSUER_ID, CREATED_AT);
+    }
+
+    private YearMonth cardExpiryAfter(Instant referenceTime) {
+        return YearMonth.from(referenceTime.atZone(ZoneOffset.UTC)).plusYears(2);
     }
 
     private CardModel cardWithStatusAndExpiry(CardModelStatus status, YearMonth expiryDate) {

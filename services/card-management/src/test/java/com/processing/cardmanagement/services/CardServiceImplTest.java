@@ -34,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -141,7 +140,7 @@ class CardServiceImplTest {
         // Arrange
         when(defaults.pageLimit()).thenReturn(50);
         when(defaults.pageOffset()).thenReturn(0L);
-        when(cardRepository.findCards(anyInt(), anyLong(), any(), any(), any(), any(), any()))
+        when(cardRepository.findCards(50, 0L, null, null, null, null, null))
                 .thenReturn(List.of(card()));
 
         // Act
@@ -149,7 +148,7 @@ class CardServiceImplTest {
 
         // Assert
         assertThat(cards).hasSize(1);
-        verify(cardRepository).findCards(50, 0L, null, null, null, null, null);
+        assertThat(cards.get(0).pan()).isEqualTo(PAN);
     }
 
     @Test
@@ -300,7 +299,11 @@ class CardServiceImplTest {
 
         // Assert
         assertThat(created).isSameAs(saved);
-        verify(panGenerator).generatePan(BIN);
+        ArgumentCaptor<Card> captor = ArgumentCaptor.forClass(Card.class);
+        verify(cardRepository).create(captor.capture());
+        assertThat(captor.getValue().pan()).isEqualTo(PAN);
+        assertThat(captor.getValue().bin()).isEqualTo(BIN);
+        assertThat(captor.getValue().issuerId()).isEqualTo(ISSUER_ID);
         verify(eventNotifier).notifyListeners(any(CardEvent.class));
     }
 

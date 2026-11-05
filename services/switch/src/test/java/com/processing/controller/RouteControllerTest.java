@@ -1,8 +1,12 @@
 package com.processing.controller;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.processing.common.dto.authorization.AuthorizationRequest;
 import com.processing.common.dto.authorization.AuthorizationResponse;
 import com.processing.service.RouteService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +15,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
@@ -30,10 +35,20 @@ class RouteControllerTest {
     private RouteService routeService;
 
     private RouteController routeController;
+    private Logger routeControllerLogger;
+    private ListAppender<ILoggingEvent> logAppender;
 
     @BeforeEach
     void setUp() {
         routeController = new RouteController(routeService);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (logAppender != null) {
+            routeControllerLogger.detachAppender(logAppender);
+            logAppender.stop();
+        }
     }
 
     @Test
@@ -54,7 +69,7 @@ class RouteControllerTest {
     @ParameterizedTest(name = "pan={0}")
     @NullSource
     @ValueSource(strings = {"", "123", "4000"})
-    void shouldHandlePanThatCannotBeMasked(String pan) {
+    void shouldPassThroughResponseWhenPanCannotBeMasked(String pan) {
         // Arrange
         AuthorizationResponse expected = AuthorizationResponse.unknownBin("000001");
         when(routeService.route(any())).thenReturn(expected);
@@ -64,6 +79,26 @@ class RouteControllerTest {
 
         // Assert
         assertThat(response.getBody()).isSameAs(expected);
+    }
+
+    @Test
+    void shouldMaskPanInLogs() {
+        // Arrange
+        routeControllerLogger = (Logger) LoggerFactory.getLogger(RouteController.class);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        routeControllerLogger.addAppender(logAppender);
+        AuthorizationResponse expected = AuthorizationResponse.approved(request(PAN), "123456789012", "ABC123",
+                Instant.now());
+        when(routeService.route(any())).thenReturn(expected);
+
+        // Act
+        routeController.routeTransaction(request(PAN));
+
+        // Assert
+        assertThat(logAppender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anyMatch(message -> message.contains("4000****7890") && !message.contains(PAN));
     }
 
     private AuthorizationRequest request(String pan) {
