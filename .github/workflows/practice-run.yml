@@ -12,13 +12,14 @@ on:
   workflow_dispatch:
     inputs:
       practice:
-        description: 'Номер практики (1=smoke, 5=e2e, 6=load-smoke)'
+        description: "Номер практики (1=smoke, 5=e2e, 6=load-smoke, api=API-тесты практики 5)"
         required: true
         type: choice
         options:
-        - '1'
-        - '5'
-        - '6'
+          - "1"
+          - "5"
+          - "6"
+          - "api"
 
 # Отменяем предыдущие незавершённые прогоны в том же репозитории/ветке.
 concurrency:
@@ -30,214 +31,300 @@ jobs:
     if: github.event.inputs.practice == '1'
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Normalize GHCR namespace to lowercase
-      run: echo "GHCR_USER=${OWNER,,}" >> "$GITHUB_ENV"
-      env:
-        OWNER: ${{ github.repository_owner }}
+      - name: Normalize GHCR namespace to lowercase
+        run: echo "GHCR_USER=${OWNER,,}" >> "$GITHUB_ENV"
+        env:
+          OWNER: ${{ github.repository_owner }}
 
-    - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y jq bc
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq bc
 
-    - name: Create .env file
-      run: cp .env.example .env
+      - name: Create .env file
+        run: cp .env.example .env
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Cache Maven/npm build mounts
-      uses: actions/cache@v4
-      with:
-        path: |
-          var-cache-m2
-          var-cache-npm
-        key: docker-build-mounts-${{ hashFiles('services/**/pom.xml', 'services/dashboard/package.json') }}
-        restore-keys: |
-          docker-build-mounts-
+      - name: Cache Maven/npm build mounts
+        uses: actions/cache@v4
+        with:
+          path: |
+            var-cache-m2
+            var-cache-npm
+          key: docker-build-mounts-${{ hashFiles('services/**/pom.xml', 'services/dashboard/package.json') }}
+          restore-keys: |
+            docker-build-mounts-
 
-    - name: Inject build mounts into Buildx
-      uses: reproducible-containers/buildkit-cache-dance@v3.1.2
-      with:
-        cache-map: |
-          {
-            "var-cache-m2": "/root/.m2",
-            "var-cache-npm": "/root/.npm"
-          }
-        skip-extraction: false
+      - name: Inject build mounts into Buildx
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.2
+        with:
+          cache-map: |
+            {
+              "var-cache-m2": "/root/.m2",
+              "var-cache-npm": "/root/.npm"
+            }
+          skip-extraction: false
 
-    - name: Build Docker images
-      run: docker compose build
-      env:
-        GHCR_USER: ${{ env.GHCR_USER }}
+      - name: Build Docker images
+        run: docker compose build
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
 
-    - name: Start all services
-      run: docker compose up -d
-      env:
-        GHCR_USER: ${{ env.GHCR_USER }}
+      - name: Start all services
+        run: docker compose up -d
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
 
-    - name: Wait for services to be ready
-      run: |
-        echo "Waiting for services to start"
-        for i in {1..60}; do
-          if curl -s http://localhost:8080/health > /dev/null 2>&1; then
-            break
-          fi
-          echo "Waiting ($i/60)"
-          sleep 5
-        done
-        sleep 15
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start"
+          for i in {1..60}; do
+            if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+              break
+            fi
+            echo "Waiting ($i/60)"
+            sleep 5
+          done
+          sleep 15
 
-    - name: Run smoke tests
-      run: chmod +x scripts/smoke-test.sh && ./scripts/smoke-test.sh
+      - name: Run smoke tests
+        run: chmod +x scripts/smoke-test.sh && ./scripts/smoke-test.sh
 
-    - name: Show logs on failure
-      if: failure()
-      run: docker compose logs --tail=100
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
 
-    - name: Cleanup
-      if: always()
-      run: docker compose down -v
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
 
   e2e-tests:
     if: github.event.inputs.practice == '5'
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Normalize GHCR namespace to lowercase
-      run: echo "GHCR_USER=${OWNER,,}" >> "$GITHUB_ENV"
-      env:
-        OWNER: ${{ github.repository_owner }}
+      - name: Normalize GHCR namespace to lowercase
+        run: echo "GHCR_USER=${OWNER,,}" >> "$GITHUB_ENV"
+        env:
+          OWNER: ${{ github.repository_owner }}
 
-    - name: Set up JDK 21 for E2E
-      uses: actions/setup-java@v5
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: 'maven'
+      - name: Set up JDK 21 for E2E
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
 
-    - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y jq bc
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq bc
 
-    - name: Create .env file
-      run: cp .env.example .env
+      - name: Create .env file
+        run: cp .env.example .env
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Cache Maven/npm build mounts
-      uses: actions/cache@v4
-      with:
-        path: |
-          var-cache-m2
-          var-cache-npm
-        key: docker-build-mounts-${{ hashFiles('services/**/pom.xml', 'services/dashboard/package.json') }}
-        restore-keys: |
-          docker-build-mounts-
+      - name: Cache Maven/npm build mounts
+        uses: actions/cache@v4
+        with:
+          path: |
+            var-cache-m2
+            var-cache-npm
+          key: docker-build-mounts-${{ hashFiles('services/**/pom.xml', 'services/dashboard/package.json') }}
+          restore-keys: |
+            docker-build-mounts-
 
-    - name: Inject build mounts into Buildx
-      uses: reproducible-containers/buildkit-cache-dance@v3.1.2
-      with:
-        cache-map: |
-          {
-            "var-cache-m2": "/root/.m2",
-            "var-cache-npm": "/root/.npm"
-          }
-        skip-extraction: false
+      - name: Inject build mounts into Buildx
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.2
+        with:
+          cache-map: |
+            {
+              "var-cache-m2": "/root/.m2",
+              "var-cache-npm": "/root/.npm"
+            }
+          skip-extraction: false
 
-    - name: Build Docker images
-      run: docker compose build
-      env:
-        GHCR_USER: ${{ env.GHCR_USER }}
+      - name: Build Docker images
+        run: docker compose build
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
 
-    - name: Start all services
-      run: docker compose up -d
-      env:
-        GHCR_USER: ${{ env.GHCR_USER }}
+      - name: Start all services
+        run: docker compose up -d
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
 
-    - name: Wait for services to be ready
-      run: |
-        echo "Waiting for services to start"
-        for i in {1..60}; do
-          not_ready=$(docker compose ps --format '{{.Health}}' | grep -E 'starting|unhealthy' | wc -l | tr -d ' ')
-          if [ "$not_ready" == "0" ]; then
-            break
-          fi
-          echo "Waiting ($i/60)"
-          sleep 5
-        done
-        sleep 15
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start"
+          for i in {1..60}; do
+            not_ready=$(docker compose ps --format '{{ .Health }}' | grep -E 'starting|unhealthy' | wc -l | tr -d ' ')
+            if [ "$not_ready" == "0" ]; then
+              break
+            fi
+            echo "Waiting ($i/60)"
+            sleep 5
+          done
+          sleep 15
 
-    - name: Run e2e tests
-      run: mvn -f services/pom.xml -pl e2e-tests -am test -DskipE2eTests=false
+      - name: Run e2e tests
+        run: mvn -f services/pom.xml -pl e2e-tests -am test -DskipE2eTests=false
 
-    - name: Show logs on failure
-      if: failure()
-      run: docker compose logs --tail=100
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
 
-    - name: Cleanup
-      if: always()
-      run: docker compose down -v
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
+
+  api-tests:
+    if: github.event.inputs.practice == 'api'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Normalize GHCR namespace to lowercase
+        run: echo "GHCR_USER=${OWNER,,}" >> "$GITHUB_ENV"
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Set up JDK 21 for API tests
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Create .env file
+        run: cp .env.example .env
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Maven/npm build mounts
+        uses: actions/cache@v4
+        with:
+          path: |
+            var-cache-m2
+            var-cache-npm
+          key: docker-build-mounts-${{ hashFiles('services/**/pom.xml', 'services/dashboard/package.json') }}
+          restore-keys: |
+            docker-build-mounts-
+
+      - name: Inject build mounts into Buildx
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.2
+        with:
+          cache-map: |
+            {
+              "var-cache-m2": "/root/.m2",
+              "var-cache-npm": "/root/.npm"
+            }
+          skip-extraction: false
+
+      - name: Build Docker images
+        run: docker compose build
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
+
+      - name: Start all services
+        run: docker compose up -d
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start"
+          for i in {1..60}; do
+            not_ready=$(docker compose ps --format '{{ .Health }}' | grep -E 'starting|unhealthy' | wc -l | tr -d ' ')
+            if [ "$not_ready" == "0" ]; then
+              break
+            fi
+            echo "Waiting ($i/60)"
+            sleep 5
+          done
+          sleep 15
+
+      - name: Run API tests
+        run: mvn -f services/pom.xml -Papi-tests -pl api-tests test -DskipApiTests=false
+
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-tests-surefire-reports
+          path: services/api-tests/target/surefire-reports/
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
 
   load-smoke:
     if: github.event.inputs.practice == '6'
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Normalize GHCR namespace to lowercase
-      run: echo "GHCR_USER=${OWNER,,}" >> "$GITHUB_ENV"
-      env:
-        OWNER: ${{ github.repository_owner }}
+      - name: Normalize GHCR namespace to lowercase
+        run: echo "GHCR_USER=${OWNER,,}" >> "$GITHUB_ENV"
+        env:
+          OWNER: ${{ github.repository_owner }}
 
-    - name: Create .env file
-      run: cp .env.example .env
+      - name: Create .env file
+        run: cp .env.example .env
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Build Docker images
-      run: docker compose build
-      env:
-        GHCR_USER: ${{ env.GHCR_USER }}
+      - name: Build Docker images
+        run: docker compose build
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
 
-    - name: Start all services
-      run: docker compose up -d
-      env:
-        GHCR_USER: ${{ env.GHCR_USER }}
+      - name: Start all services
+        run: docker compose up -d
+        env:
+          GHCR_USER: ${{ env.GHCR_USER }}
 
-    - name: Wait for services
-      run: |
-        for i in {1..60}; do
-          if curl -s http://localhost:8080/health > /dev/null 2>&1; then break; fi
-          sleep 5
-        done
-        sleep 15
+      - name: Wait for services
+        run: |
+          for i in {1..60}; do
+            if curl -s http://localhost:8080/health > /dev/null 2>&1; then break; fi
+            sleep 5
+          done
+          sleep 15
 
-    - name: Generate test cards
-      run: |
-        curl -X POST http://localhost:8080/api/cards/generate \
-          -H "Content-Type: application/json" \
-          -d '{"count":100,"bins":["400000","400001","400002","400003","400004"]}'
+      - name: Generate test cards
+        run: |
+          curl -X POST http://localhost:8080/api/cards/generate \
+            -H "Content-Type: application/json" \
+            -d '{"count":100,"bins":["400000","400001","400002","400003","400004"]}'
 
-    - name: Run load smoke script (CI smoke check — 10 transactions only)
-      env:
-        LOAD_COUNT: 10
-      run: |
-        if [ -f scripts/load-smoke.sh ]; then
-          chmod +x scripts/load-smoke.sh && ./scripts/load-smoke.sh
-        else
-          echo "⚠️ scripts/load-smoke.sh not found — skipping load test"
-        fi
+      - name: Run load smoke script (CI smoke check — 10 transactions only)
+        env:
+          LOAD_COUNT: 10
+        run: |
+          if [ -f scripts/load-smoke.sh ]; then
+            chmod +x scripts/load-smoke.sh && ./scripts/load-smoke.sh
+          else
+            echo "⚠️ scripts/load-smoke.sh not found — skipping load test"
+          fi
 
-    - name: Show logs on failure
-      if: failure()
-      run: docker compose logs --tail=100
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
 
-    - name: Cleanup
-      if: always()
-      run: docker compose down -v
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v

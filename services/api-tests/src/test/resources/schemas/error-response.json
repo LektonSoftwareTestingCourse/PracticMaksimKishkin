@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["error", "message", "timestamp", "serviceName", "retryAfterMs"],
+  "properties": {
+    "error": {
+      "type": "string",
+      "minLength": 1
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 10
+    },
+    "serviceName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retryAfterMs": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": true
+}

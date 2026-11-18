@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["total", "transactions"],
+  "properties": {
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mti",
+          "stan",
+          "pan",
+          "status",
+          "amount",
+          "transmissionDateTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F-]{36}$"
+          },
+          "mti": {
+            "type": "string"
+          },
+          "stan": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$"
+          },
+          "pan": {
+            "type": "string",
+            "pattern": "^[0-9]{16}$"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["APPROVED", "DECLINED"]
+          },
+          "transmissionDateTime": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

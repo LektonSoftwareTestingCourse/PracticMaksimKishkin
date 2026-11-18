@@ -15,6 +15,7 @@ endif
 # Специальные цели
 .PHONY: run stop clean build status logs smoke smoke-win test lint
 .PHONY: mvn-all mvn-clean mvn-test mvn-lint mvn-service
+.PHONY: api-test
 .PHONY: npm-install npm-lint npm-test npm-build
 
 help:
@@ -41,6 +42,9 @@ help:
 	@echo ""
 	@echo "Maven (single service, SERVICE=gateway):"
 	@echo "  make mvn-service   - Build one service + deps"
+	@echo ""
+	@echo "API tests (practice 5, требует docker compose up -d):"
+	@echo "  make api-test      - Run API tests against running stack"
 	@echo ""
 	@echo "Frontend (dashboard):"
 	@echo "  make npm-install   - Install npm dependencies"
@@ -94,6 +98,9 @@ mvn-lint:
 
 mvn-service:
 	$(MVN) -P$(SERVICE) package
+
+api-test:
+	$(MVN) -Papi-tests -pl api-tests test
 
 # Frontend
 npm-install:

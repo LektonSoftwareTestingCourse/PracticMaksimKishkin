@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["status", "service", "version", "services"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["ok", "unavailable", "degraded"]
+    },
+    "service": {
+      "type": "string",
+      "enum": ["gateway"]
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "services": {
+      "type": "object",
+      "required": ["switch", "authorization", "cardManagement", "logger"],
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["ok", "unavailable", "degraded"]
+      }
+    }
+  },
+  "additionalProperties": true
+}
