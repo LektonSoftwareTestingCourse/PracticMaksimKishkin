@@ -1,6 +1,6 @@
 # API-тесты СМП — отчёт
 
-> **Модуль:** 5 — API-тестирование REST-сервисов (артефакт 5, часть 1 из 2).
+> **Модуль:** 5 — API-тестирование REST-сервисов.
 > **Объект:** СМП — Симулятор процессингового центра (11 сервисов, PostgreSQL, RabbitMQ, единая точка входа Gateway).
 > **Стек тестов:** Java 21, Maven, JUnit 5, REST-assured 5.4.0, Hamcrest, Awaitility 4.2.2, JSON Schema Validator.
 > **Модуль тестов:** [`services/api-tests`](../../services/api-tests) (профиль Maven `api-tests`).
